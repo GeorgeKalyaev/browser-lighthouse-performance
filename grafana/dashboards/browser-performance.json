@@ -1,0 +1,501 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "ms",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+          "groupBy": [
+            { "params": ["$__interval"], "type": "time" },
+            { "params": ["page"], "type": "tag" },
+            { "params": ["null"], "type": "fill" }
+          ],
+          "measurement": "browser_performance",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              { "params": ["speedIndex"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ]
+          ],
+          "tags": [
+            { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
+            { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
+            { "condition": "AND", "key": "profile", "operator": "=~", "value": "/^$profile$/" }
+          ]
+        }
+      ],
+      "title": "Speed Index (ms)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "ms",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "id": 2,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+          "groupBy": [
+            { "params": ["$__interval"], "type": "time" },
+            { "params": ["page"], "type": "tag" },
+            { "params": ["null"], "type": "fill" }
+          ],
+          "measurement": "browser_performance",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              { "params": ["fcp"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ]
+          ],
+          "tags": [
+            { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
+            { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
+            { "condition": "AND", "key": "profile", "operator": "=~", "value": "/^$profile$/" }
+          ]
+        }
+      ],
+      "title": "First Contentful Paint (FCP)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "ms",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "id": 3,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+          "groupBy": [
+            { "params": ["$__interval"], "type": "time" },
+            { "params": ["page"], "type": "tag" },
+            { "params": ["null"], "type": "fill" }
+          ],
+          "measurement": "browser_performance",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              { "params": ["lcp"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ]
+          ],
+          "tags": [
+            { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
+            { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
+            { "condition": "AND", "key": "profile", "operator": "=~", "value": "/^$profile$/" }
+          ]
+        }
+      ],
+      "title": "Largest Contentful Paint (LCP)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "ms",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 18 },
+      "id": 4,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+          "groupBy": [
+            { "params": ["$__interval"], "type": "time" },
+            { "params": ["page"], "type": "tag" },
+            { "params": ["null"], "type": "fill" }
+          ],
+          "measurement": "browser_performance",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              { "params": ["ttfb"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ]
+          ],
+          "tags": [
+            { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
+            { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
+            { "condition": "AND", "key": "profile", "operator": "=~", "value": "/^$profile$/" }
+          ]
+        }
+      ],
+      "title": "TTFB (server-response-time)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "ms",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 18 },
+      "id": 5,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+          "groupBy": [
+            { "params": ["$__interval"], "type": "time" },
+            { "params": ["page"], "type": "tag" },
+            { "params": ["null"], "type": "fill" }
+          ],
+          "measurement": "browser_performance",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              { "params": ["tbt"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ]
+          ],
+          "tags": [
+            { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
+            { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
+            { "condition": "AND", "key": "profile", "operator": "=~", "value": "/^$profile$/" }
+          ]
+        }
+      ],
+      "title": "Total Blocking Time (TBT)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisLabel": "CLS",
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "spanNulls": false
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 18 },
+      "id": 6,
+      "options": {
+        "legend": { "calcs": ["mean", "lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+          "groupBy": [
+            { "params": ["$__interval"], "type": "time" },
+            { "params": ["page"], "type": "tag" },
+            { "params": ["null"], "type": "fill" }
+          ],
+          "measurement": "browser_performance",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              { "params": ["cls"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ]
+          ],
+          "tags": [
+            { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
+            { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
+            { "condition": "AND", "key": "profile", "operator": "=~", "value": "/^$profile$/" }
+          ]
+        }
+      ],
+      "title": "Cumulative Layout Shift (CLS)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "inspect": false },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "speedIndex" },
+            "properties": [{ "id": "displayName", "value": "Speed Index (ms)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "fcp" },
+            "properties": [{ "id": "displayName", "value": "FCP (ms)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "lcp" },
+            "properties": [{ "id": "displayName", "value": "LCP (ms)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "ttfb" },
+            "properties": [{ "id": "displayName", "value": "TTFB (ms)" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "tbt" },
+            "properties": [{ "id": "displayName", "value": "TBT (ms)" }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
+      "id": 7,
+      "options": {
+        "footer": { "fields": "", "reducer": ["sum"], "show": false },
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+          "groupBy": [
+            { "params": ["page"], "type": "tag" }
+          ],
+          "measurement": "browser_performance",
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "table",
+          "select": [
+            [
+              { "params": ["speedIndex"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ],
+            [
+              { "params": ["fcp"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ],
+            [
+              { "params": ["lcp"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ],
+            [
+              { "params": ["ttfb"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ],
+            [
+              { "params": ["tbt"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ],
+            [
+              { "params": ["cls"], "type": "field" },
+              { "params": [], "type": "mean" }
+            ]
+          ],
+          "tags": [
+            { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
+            { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
+            { "condition": "AND", "key": "profile", "operator": "=~", "value": "/^$profile$/" }
+          ]
+        }
+      ],
+      "title": "Average metrics by page (selected filters)",
+      "type": "table"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["browser-performance", "lighthouse", "influxdb"],
+  "templating": {
+    "list": [
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+        "definition": "SHOW TAG VALUES FROM \"browser_performance\" WITH KEY = \"run_id\"",
+        "includeAll": true,
+        "label": "Run ID",
+        "multi": false,
+        "name": "run_id",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"browser_performance\" WITH KEY = \"run_id\"",
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+        "definition": "SHOW TAG VALUES FROM \"browser_performance\" WITH KEY = \"page\"",
+        "includeAll": true,
+        "label": "Page",
+        "multi": false,
+        "name": "page",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"browser_performance\" WITH KEY = \"page\"",
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "influxdb", "uid": "bpr-influx" },
+        "definition": "SHOW TAG VALUES FROM \"browser_performance\" WITH KEY = \"profile\"",
+        "includeAll": true,
+        "label": "Profile",
+        "multi": false,
+        "name": "profile",
+        "options": [],
+        "query": "SHOW TAG VALUES FROM \"browser_performance\" WITH KEY = \"profile\"",
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Browser Performance (Lighthouse)",
+  "uid": "browser-performance-lighthouse",
+  "version": 1,
+  "weekStart": ""
+}

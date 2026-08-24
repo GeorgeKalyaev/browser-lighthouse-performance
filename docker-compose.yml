@@ -1,0 +1,103 @@
+services:
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - "8086:8086"
+    environment:
+      INFLUXDB_DB: performance
+      INFLUXDB_HTTP_AUTH_ENABLED: "false"
+      INFLUXDB_ADMIN_USER: admin
+      INFLUXDB_ADMIN_PASSWORD: adminpassword
+    volumes:
+      - bpr-influx-data:/var/lib/influxdb
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  grafana:
+    image: grafana/grafana:9.5.18
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_DEFAULT_THEME: light
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - bpr-grafana-data:/var/lib/grafana
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+  # Local Git SCM (GitLab-compatible workflow). Point Jenkins GIT_URL to company GitLab later.
+  gitea:
+    image: gitea/gitea:1.22.3
+    ports:
+      - "3001:3000"
+      - "2222:22"
+    environment:
+      USER_UID: "1000"
+      USER_GID: "1000"
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__server__DOMAIN: localhost
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__ROOT_URL: http://localhost:3001/
+      GITEA__server__DISABLE_SSH: "true"
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__webhook__ALLOWED_HOST_LIST: "*"
+    volumes:
+      - bpr-gitea-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  jenkins:
+    build:
+      context: ./jenkins
+    user: "0:0"
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    environment:
+      JENKINS_ADMIN_PASSWORD: admin
+      JENKINS_CONTAINER_NAME: browser-performance-runner-jenkins-1
+      GIT_URL: http://gitea:3000/gitadmin/browser-performance-runner.git
+      USER_TOKEN: ${USER_TOKEN:-}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      INFLUX_USERNAME: ${INFLUX_USERNAME:-}
+      INFLUX_PASSWORD: ${INFLUX_PASSWORD:-}
+      GIT_USERNAME: gitadmin
+      GIT_PASSWORD: gitadmin
+      CASC_JENKINS_CONFIG: /var/jenkins_home/casc.yaml
+    volumes:
+      - bpr-jenkins-home:/var/jenkins_home
+      - ./jenkins/casc.yaml:/var/jenkins_home/casc.yaml:ro
+      - //var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      gitea:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/login >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+
+volumes:
+  bpr-influx-data:
+  bpr-grafana-data:
+  bpr-gitea-data:
+  bpr-jenkins-home:

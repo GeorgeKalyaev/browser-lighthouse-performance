@@ -1,0 +1,87 @@
+jenkins:
+  systemMessage: "Browser Performance Runner CI — profiles from Git SCM"
+  numExecutors: 2
+  mode: NORMAL
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD:-admin}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: http://localhost:8080/
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "USER_TOKEN"
+              secret: "${USER_TOKEN:-}"
+              description: "Application userToken"
+          - string:
+              scope: GLOBAL
+              id: "ADMIN_TOKEN"
+              secret: "${ADMIN_TOKEN:-}"
+              description: "Application adminToken"
+          - string:
+              scope: GLOBAL
+              id: "INFLUX_USERNAME"
+              secret: "${INFLUX_USERNAME:-}"
+              description: "InfluxDB username (optional)"
+          - string:
+              scope: GLOBAL
+              id: "INFLUX_PASSWORD"
+              secret: "${INFLUX_PASSWORD:-}"
+              description: "InfluxDB password (optional)"
+          - usernamePassword:
+              scope: GLOBAL
+              id: "git-scm"
+              username: "${GIT_USERNAME:-gitadmin}"
+              password: "${GIT_PASSWORD:-gitadmin}"
+              description: "Git SCM (Gitea locally / GitLab remotely)"
+
+jobs:
+  - script: |
+      def gitUrl = System.getenv('GIT_URL') ?: 'http://gitea:3000/gitadmin/browser-performance-runner.git'
+      pipelineJob('browser-performance') {
+        description('Checkout URL profiles from Git SCM, run Lighthouse, write InfluxDB')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url(gitUrl)
+                  credentials('git-scm')
+                }
+                branches('*/main')
+                extensions {
+                  wipeWorkspace()
+                }
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+        parameters {
+          stringParam('TEST_STAND', 'http://host.docker.internal:1080/', 'Application base URL')
+          choiceParam('PERFORMANCE_URLS_PROFILE', ['webtoursUrls', 'loadTestUrls', 'smokeUrls', 'criticalUrls', 'adminUrls'], 'URL profile from src/profiles (Git)')
+          stringParam('RUN_TIME', '60', 'Duration seconds')
+          stringParam('PACING', '5', 'Pause between measurements (sec)')
+          stringParam('PERF_REQUEST_TIMEOUT', '90', 'Per-page timeout (sec)')
+          choiceParam('CACHE_MODE', ['cold', 'warm'], 'Cache mode')
+          stringParam('INFLUX_URL', 'http://host.docker.internal:8086', 'InfluxDB 1.8 URL')
+          stringParam('INFLUX_DATABASE', 'performance', 'Influx database')
+          stringParam('INFLUX_MEASUREMENT', 'browser_performance', 'Influx measurement')
+          booleanParam('INFLUX_ENABLED', true, 'Send metrics to InfluxDB')
+          booleanParam('CHECK_ONLY', false, 'Run preflight only')
+          stringParam('RUN_ID', '', 'Optional shared run id (empty = auto jenkins-<BUILD_NUMBER>)')
+        }
+      }

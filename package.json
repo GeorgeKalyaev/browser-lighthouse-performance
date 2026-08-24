@@ -1,0 +1,31 @@
+{
+  "name": "browser-performance-runner",
+  "version": "1.0.0",
+  "description": "Local Browser Performance Runner: Playwright (auth/browser) + Lighthouse (metrics) + InfluxDB 1.8",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "browser:install": "playwright install chromium",
+    "browser:performance:check": "tsx src/check.ts",
+    "browser:performance": "tsx src/index.ts",
+    "local:up": "powershell -ExecutionPolicy Bypass -File ./scripts/start-local.ps1",
+    "local:jenkins": "powershell -ExecutionPolicy Bypass -File ./scripts/start-jenkins.ps1",
+    "local:git": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-git-scm.ps1",
+    "test": "tsx --test tests/**/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "lighthouse": "^12.4.0",
+    "playwright": "^1.50.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

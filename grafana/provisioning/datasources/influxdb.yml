@@ -1,0 +1,13 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB-Performance
+    type: influxdb
+    uid: bpr-influx
+    access: proxy
+    url: http://influxdb:8086
+    database: performance
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMode: GET

@@ -1,0 +1,38 @@
+# Optional: same runner in company GitLab CI (when remote is GitLab).
+# Local Jenkins uses the Jenkinsfile; this file is for GitLab pipelines.
+
+stages:
+  - check
+  - measure
+
+variables:
+  PLAYWRIGHT_IMAGE: "mcr.microsoft.com/playwright:v1.62.1-jammy"
+  PERFORMANCE_URLS_PROFILE: "webtoursUrls"
+  CACHE_MODE: "cold"
+  INFLUX_ENABLED: "true"
+
+browser-performance:check:
+  stage: check
+  image: $PLAYWRIGHT_IMAGE
+  script:
+    - npm ci
+    - npm run browser:performance:check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+
+browser-performance:run:
+  stage: measure
+  image: $PLAYWRIGHT_IMAGE
+  script:
+    - npm ci
+    - npm run browser:performance
+  artifacts:
+    when: always
+    paths:
+      - results/
+    expire_in: 14 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
