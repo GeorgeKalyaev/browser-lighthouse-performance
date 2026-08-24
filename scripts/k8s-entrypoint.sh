@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Runtime entrypoint for Kubernetes Job pods.
-# - Pulls URL profiles + code from Git (Gitea / GitLab) when GIT_SYNC=true
-# - Runs Lighthouse measurements via tsx
+# - Pulls URL profiles from Git (Gitea / GitLab) when GIT_SYNC=true
+# - Runs compiled JS (dist/) — no npm/tsx download inside pod
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/app}"
-RUN_SCRIPT="${RUN_SCRIPT:-src/index.ts}"
+RUN_SCRIPT="${RUN_SCRIPT:-dist/src/index.js}"
 
 if [[ "${GIT_SYNC:-false}" == "true" ]]; then
   if [[ -z "${GIT_URL:-}" ]]; then
@@ -20,32 +20,22 @@ if [[ "${GIT_SYNC:-false}" == "true" ]]; then
   rm -rf /workspace/repo
   echo "==> Cloning profiles from Git: ${GIT_URL}"
   git clone --depth 1 --branch "${GIT_BRANCH:-main}" "$clone_url" /workspace/repo
-  cd /workspace/repo
-  npm ci --omit=dev
-  # tsx is devDependency — copy from baked image instead of npm registry in pod
-  if [[ ! -x ./node_modules/.bin/tsx ]]; then
-    mkdir -p ./node_modules/.bin
-    cp -a /app/node_modules/tsx ./node_modules/tsx 2>/dev/null || npm install --no-save tsx@4.19.2
-    ln -sf ../tsx/dist/cli.mjs ./node_modules/.bin/tsx 2>/dev/null || true
-  fi
-  APP_DIR=/workspace/repo
+  echo "==> Sync URL profiles into runner image"
+  mkdir -p /app/src/profiles
+  cp -a /workspace/repo/src/profiles/. /app/src/profiles/
+  # Optional: sync env example only; secrets come from K8s env
 fi
 
 cd "$APP_DIR"
 
 if [[ "${CHECK_ONLY:-false}" == "true" ]]; then
-  RUN_SCRIPT="src/check.ts"
+  RUN_SCRIPT="dist/src/check.js"
 fi
 
-run_tsx() {
-  if [[ -x ./node_modules/.bin/tsx ]]; then
-    exec ./node_modules/.bin/tsx "$@"
-  elif [[ -x /app/node_modules/.bin/tsx ]]; then
-    exec /app/node_modules/.bin/tsx "$@"
-  else
-    exec npx --yes tsx@4.19.2 "$@"
-  fi
-}
+if [[ ! -f "$RUN_SCRIPT" ]]; then
+  echo "Missing compiled entrypoint: $APP_DIR/$RUN_SCRIPT (build dist/ into image)" >&2
+  exit 1
+fi
 
 echo "==> Running browser performance (${RUN_SCRIPT})"
-run_tsx "$RUN_SCRIPT"
+exec node "$RUN_SCRIPT"

@@ -24,7 +24,7 @@ spec:
       containers:
         - name: runner
           image: __RUNNER_IMAGE__
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: ["/bin/bash", "/app/scripts/k8s-entrypoint.sh"]
           envFrom:
             - configMapRef:

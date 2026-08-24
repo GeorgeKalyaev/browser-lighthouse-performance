@@ -153,17 +153,37 @@ $srcKube = Join-Path $env:USERPROFILE '.kube/config'
 if (-not (Test-Path $srcKube)) {
   throw "kubeconfig not found at $srcKube"
 }
-$kube = Get-Content $srcKube -Raw
-# Jenkins reaches kind API via host.docker.internal instead of 127.0.0.1
-$kube = $kube -replace '127\.0\.0\.1', 'host.docker.internal'
-$kube = $kube -replace 'localhost', 'host.docker.internal'
-Set-Content -Path (Join-Path $kubeDir 'kubeconfig') -Value $kube -NoNewline
+# Jenkins reaches kind API via host.docker.internal; kind cert has no SAN for that name,
+# so skip TLS verify for the exported copy only (local PoC).
+$server = kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+$port = ([uri]$server).Port
+$jenkinsKube = @"
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    insecure-skip-tls-verify: true
+    server: https://host.docker.internal:$port
+  name: kind-$CLUSTER
+contexts:
+- context:
+    cluster: kind-$CLUSTER
+    user: kind-$CLUSTER
+  name: kind-$CLUSTER
+current-context: kind-$CLUSTER
+users:
+- name: kind-$CLUSTER
+  user:
+    client-certificate-data: $(kubectl config view --raw --minify -o jsonpath='{.users[0].user.client-certificate-data}')
+    client-key-data: $(kubectl config view --raw --minify -o jsonpath='{.users[0].user.client-key-data}')
+"@
+Set-Content -Path (Join-Path $kubeDir 'kubeconfig') -Value $jenkinsKube -NoNewline
 
 Write-Host ''
 Write-Host 'Kubernetes ready:'
 Write-Host "  Context:   kind-$CLUSTER"
 Write-Host "  Namespace: $NAMESPACE"
-Write-Host "  Image:     host.docker.internal:8082/browser-performance-runner:1.0.0"
+Write-Host "  Image:     host.docker.internal:8082/browser-performance-runner:1.0.2"
 Write-Host "  Git:       http://host.docker.internal:3001/... (profiles cloned in pod)"
 Write-Host ''
 Write-Host 'Smoke test (30s, no Influx):'

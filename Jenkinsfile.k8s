@@ -20,7 +20,7 @@ pipeline {
   environment {
     KUBECONFIG = '/var/jenkins_home/kubeconfig'
     K8S_NAMESPACE = 'browser-performance'
-    RUNNER_IMAGE = "${env.RUNNER_IMAGE ?: 'host.docker.internal:8082/browser-performance-runner:1.0.0'}"
+    RUNNER_IMAGE = "${env.RUNNER_IMAGE ?: 'host.docker.internal:8082/browser-performance-runner:1.0.2'}"
     GIT_URL = "${env.GIT_URL ?: 'http://host.docker.internal:3001/gitadmin/browser-performance-runner.git'}"
     GIT_BRANCH = "${env.GIT_BRANCH ?: 'main'}"
   }

@@ -142,11 +142,12 @@
           "custom": {
             "axisLabel": "ms",
             "drawStyle": "line",
-            "fillOpacity": 8,
+            "fillOpacity": 0,
+            "lineInterpolation": "linear",
             "lineWidth": 2,
-            "pointSize": 5,
-            "showPoints": "auto",
-            "spanNulls": false
+            "pointSize": 6,
+            "showPoints": "always",
+            "spanNulls": true
           },
           "unit": "ms"
         },
@@ -167,19 +168,13 @@
         {
           "alias": "$tag_page · Speed Index",
           "datasource": { "type": "influxdb", "uid": "bpr-influx" },
-          "groupBy": [
-            { "params": ["$__interval"], "type": "time" },
-            { "params": ["page"], "type": "tag" },
-            { "params": ["null"], "type": "fill" }
-          ],
+          "groupBy": [{ "params": ["page"], "type": "tag" }],
           "measurement": "browser_performance",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "SI",
           "resultFormat": "time_series",
-          "select": [
-            [{ "params": ["speedIndex"], "type": "field" }, { "params": [], "type": "mean" }]
-          ],
+          "select": [[{ "params": ["speedIndex"], "type": "field" }]],
           "tags": [
             { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
             { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
@@ -189,19 +184,13 @@
         {
           "alias": "$tag_page · FCP",
           "datasource": { "type": "influxdb", "uid": "bpr-influx" },
-          "groupBy": [
-            { "params": ["$__interval"], "type": "time" },
-            { "params": ["page"], "type": "tag" },
-            { "params": ["null"], "type": "fill" }
-          ],
+          "groupBy": [{ "params": ["page"], "type": "tag" }],
           "measurement": "browser_performance",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "FCP",
           "resultFormat": "time_series",
-          "select": [
-            [{ "params": ["fcp"], "type": "field" }, { "params": [], "type": "mean" }]
-          ],
+          "select": [[{ "params": ["fcp"], "type": "field" }]],
           "tags": [
             { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
             { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
@@ -211,19 +200,13 @@
         {
           "alias": "$tag_page · LCP",
           "datasource": { "type": "influxdb", "uid": "bpr-influx" },
-          "groupBy": [
-            { "params": ["$__interval"], "type": "time" },
-            { "params": ["page"], "type": "tag" },
-            { "params": ["null"], "type": "fill" }
-          ],
+          "groupBy": [{ "params": ["page"], "type": "tag" }],
           "measurement": "browser_performance",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "LCP",
           "resultFormat": "time_series",
-          "select": [
-            [{ "params": ["lcp"], "type": "field" }, { "params": [], "type": "mean" }]
-          ],
+          "select": [[{ "params": ["lcp"], "type": "field" }]],
           "tags": [
             { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
             { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
@@ -233,19 +216,13 @@
         {
           "alias": "$tag_page · TTFB",
           "datasource": { "type": "influxdb", "uid": "bpr-influx" },
-          "groupBy": [
-            { "params": ["$__interval"], "type": "time" },
-            { "params": ["page"], "type": "tag" },
-            { "params": ["null"], "type": "fill" }
-          ],
+          "groupBy": [{ "params": ["page"], "type": "tag" }],
           "measurement": "browser_performance",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "TTFB",
           "resultFormat": "time_series",
-          "select": [
-            [{ "params": ["ttfb"], "type": "field" }, { "params": [], "type": "mean" }]
-          ],
+          "select": [[{ "params": ["ttfb"], "type": "field" }]],
           "tags": [
             { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
             { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
@@ -255,19 +232,13 @@
         {
           "alias": "$tag_page · TBT",
           "datasource": { "type": "influxdb", "uid": "bpr-influx" },
-          "groupBy": [
-            { "params": ["$__interval"], "type": "time" },
-            { "params": ["page"], "type": "tag" },
-            { "params": ["null"], "type": "fill" }
-          ],
+          "groupBy": [{ "params": ["page"], "type": "tag" }],
           "measurement": "browser_performance",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "TBT",
           "resultFormat": "time_series",
-          "select": [
-            [{ "params": ["tbt"], "type": "field" }, { "params": [], "type": "mean" }]
-          ],
+          "select": [[{ "params": ["tbt"], "type": "field" }]],
           "tags": [
             { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
             { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
@@ -286,11 +257,12 @@
           "custom": {
             "axisLabel": "CLS",
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 0,
+            "lineInterpolation": "linear",
             "lineWidth": 2,
-            "pointSize": 5,
-            "showPoints": "auto",
-            "spanNulls": false
+            "pointSize": 6,
+            "showPoints": "always",
+            "spanNulls": true
           },
           "decimals": 3,
           "unit": "none"
@@ -312,19 +284,13 @@
         {
           "alias": "$tag_page · CLS",
           "datasource": { "type": "influxdb", "uid": "bpr-influx" },
-          "groupBy": [
-            { "params": ["$__interval"], "type": "time" },
-            { "params": ["page"], "type": "tag" },
-            { "params": ["null"], "type": "fill" }
-          ],
+          "groupBy": [{ "params": ["page"], "type": "tag" }],
           "measurement": "browser_performance",
           "orderByTime": "ASC",
           "policy": "default",
           "refId": "CLS",
           "resultFormat": "time_series",
-          "select": [
-            [{ "params": ["cls"], "type": "field" }, { "params": [], "type": "mean" }]
-          ],
+          "select": [[{ "params": ["cls"], "type": "field" }]],
           "tags": [
             { "key": "run_id", "operator": "=~", "value": "/^$run_id$/" },
             { "condition": "AND", "key": "page", "operator": "=~", "value": "/^$page$/" },
@@ -398,6 +364,6 @@
   "timezone": "browser",
   "title": "Browser Performance (Lighthouse)",
   "uid": "browser-performance-lighthouse",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }
