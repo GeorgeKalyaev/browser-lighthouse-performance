@@ -20,7 +20,7 @@ pipeline {
   environment {
     KUBECONFIG = '/var/jenkins_home/kubeconfig'
     K8S_NAMESPACE = 'browser-performance'
-    RUNNER_IMAGE = "${env.RUNNER_IMAGE ?: 'host.docker.internal:8082/browser-performance-runner:1.0.2'}"
+    RUNNER_IMAGE = "${env.RUNNER_IMAGE ?: 'host.docker.internal:8082/browser-performance-runner:1.1.0'}"
     // Pod reaches Gitea on the Docker host — NOT the Jenkins-compose hostname "gitea"
     // and NOT Jenkins SCM env GIT_BRANCH (often "origin/main").
     POD_GIT_URL = "${env.POD_GIT_URL ?: 'http://host.docker.internal:3001/gitadmin/browser-performance-runner.git'}"

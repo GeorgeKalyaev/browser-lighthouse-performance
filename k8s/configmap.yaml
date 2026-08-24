@@ -24,4 +24,4 @@ data:
   AUTH_STRATEGY: "bearer-header"
   CHECK_ONLY: "false"
   # Runner image from Nexus (Docker registry on host)
-  RUNNER_IMAGE: "host.docker.internal:8082/browser-performance-runner:1.0.2"
+  RUNNER_IMAGE: "host.docker.internal:8082/browser-performance-runner:1.1.0"

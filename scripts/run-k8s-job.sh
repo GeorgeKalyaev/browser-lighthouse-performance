@@ -9,7 +9,7 @@ CLEANUP="${ROOT}/scripts/cleanup-after-k8s.sh"
 
 JOB_NAME="${JOB_NAME:-browser-perf-$(date +%Y%m%d-%H%M%S)}"
 RUN_ID="${RUN_ID:-local-${JOB_NAME}}"
-RUNNER_IMAGE="${RUNNER_IMAGE:-host.docker.internal:8082/browser-performance-runner:1.0.0}"
+RUNNER_IMAGE="${RUNNER_IMAGE:-host.docker.internal:8082/browser-performance-runner:1.1.0}"
 
 TEST_STAND="${TEST_STAND:-http://host.docker.internal:1080/}"
 PERFORMANCE_URLS_PROFILE="${PERFORMANCE_URLS_PROFILE:-webtoursUrls}"

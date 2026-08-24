@@ -1,0 +1,17 @@
+[
+  {
+    "name": "WebTours-Home",
+    "path": "./WebTours/",
+    "token": "anonymous"
+  },
+  {
+    "name": "WebTours-HomeHtml",
+    "path": "./WebTours/home.html",
+    "token": "anonymous"
+  },
+  {
+    "name": "WebTours-Welcome",
+    "path": "./cgi-bin/welcome.pl?signOff=true",
+    "token": "anonymous"
+  }
+]

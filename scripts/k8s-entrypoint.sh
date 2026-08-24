@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Runtime entrypoint for Kubernetes Job pods.
-# - Pulls URL profiles from Git (Gitea / GitLab) when GIT_SYNC=true
-# - Runs compiled JS (dist/) — no npm/tsx download inside pod
+# - Optionally refreshes URL profiles from Git (JSON under profiles/)
+# - Runs compiled JS (node dist/) — no npm/tsx in the pod
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/app}"
-RUN_SCRIPT="${RUN_SCRIPT:-dist/src/index.js}"
+PROFILES_DIR="${PROFILES_DIR:-/app/profiles}"
+RUN_SCRIPT="${RUN_SCRIPT:-dist/index.js}"
 
 if [[ "${GIT_SYNC:-false}" == "true" ]]; then
   if [[ -z "${GIT_URL:-}" ]]; then
@@ -18,22 +19,27 @@ if [[ "${GIT_SYNC:-false}" == "true" ]]; then
     clone_url="${clone_url/https:\/\//https:\/\/${GIT_USERNAME}:${GIT_PASSWORD}@}"
   fi
   rm -rf /workspace/repo
-  echo "==> Cloning profiles from Git: ${GIT_URL}"
+  echo "==> Cloning profiles from Git: ${GIT_URL} (branch ${GIT_BRANCH:-main})"
   git clone --depth 1 --branch "${GIT_BRANCH:-main}" "$clone_url" /workspace/repo
-  echo "==> Sync URL profiles into runner image"
-  mkdir -p /app/src/profiles
-  cp -a /workspace/repo/src/profiles/. /app/src/profiles/
-  # Optional: sync env example only; secrets come from K8s env
+
+  if [[ -d /workspace/repo/profiles ]]; then
+    echo "==> Syncing profiles/*.json into ${PROFILES_DIR}"
+    mkdir -p "$PROFILES_DIR"
+    cp -a /workspace/repo/profiles/. "$PROFILES_DIR/"
+  else
+    echo "WARN: no profiles/ in repo — using profiles baked into the image" >&2
+  fi
 fi
 
 cd "$APP_DIR"
+export PROFILES_DIR
 
 if [[ "${CHECK_ONLY:-false}" == "true" ]]; then
-  RUN_SCRIPT="dist/src/check.js"
+  RUN_SCRIPT="dist/check.js"
 fi
 
 if [[ ! -f "$RUN_SCRIPT" ]]; then
-  echo "Missing compiled entrypoint: $APP_DIR/$RUN_SCRIPT (build dist/ into image)" >&2
+  echo "Missing compiled entrypoint: $APP_DIR/$RUN_SCRIPT" >&2
   exit 1
 fi
 

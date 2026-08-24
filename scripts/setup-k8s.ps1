@@ -16,7 +16,7 @@ $NAMESPACE = 'browser-performance'
 $NEXUS_DOCKER = '127.0.0.1:8082'
 $NEXUS_USER = 'admin'
 $NEXUS_PASS = 'admin123'
-$IMAGE = "${NEXUS_DOCKER}/browser-performance-runner:1.0.0"
+$IMAGE = "${NEXUS_DOCKER}/browser-performance-runner:1.1.0"
 $GIT_USER = 'gitadmin'
 $GIT_PASS = 'gitadmin'
 
@@ -87,7 +87,7 @@ if (-not (docker image inspect $IMAGE 2>$null)) {
 
 Write-Host '==> Rebuilding runner image (git + k8s entrypoint)'
 if (-not $SkipImageBuild) {
-  docker build -t "browser-performance-runner:1.0.0" -t $IMAGE .
+  docker build -t "browser-performance-runner:1.1.0" -t $IMAGE .
   $NEXUS_PASS | docker login $NEXUS_DOCKER -u $NEXUS_USER --password-stdin
   docker push $IMAGE
 } else {
@@ -132,7 +132,7 @@ if ($LoadImageIntoKind) {
   $prev = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
   try {
-    kind load docker-image "browser-performance-runner:1.0.0" --name $CLUSTER 2>&1 | Write-Host
+    kind load docker-image "browser-performance-runner:1.1.0" --name $CLUSTER 2>&1 | Write-Host
     if ($LASTEXITCODE -eq 0) { $loadOk = $true }
   } catch {
     Write-Warning "kind load failed: $_"
@@ -183,7 +183,7 @@ Write-Host ''
 Write-Host 'Kubernetes ready:'
 Write-Host "  Context:   kind-$CLUSTER"
 Write-Host "  Namespace: $NAMESPACE"
-Write-Host "  Image:     host.docker.internal:8082/browser-performance-runner:1.0.2"
+Write-Host "  Image:     host.docker.internal:8082/browser-performance-runner:1.1.0"
 Write-Host "  Git:       http://host.docker.internal:3001/... (profiles cloned in pod)"
 Write-Host ''
 Write-Host 'Smoke test (30s, no Influx):'

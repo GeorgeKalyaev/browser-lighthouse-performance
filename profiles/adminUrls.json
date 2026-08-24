@@ -1,0 +1,7 @@
+[
+  {
+    "name": "Админка-пользователи",
+    "path": "./admin/users",
+    "token": "adminToken"
+  }
+]

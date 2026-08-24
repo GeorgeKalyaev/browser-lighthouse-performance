@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Главная",
+    "path": "./dashboard",
+    "token": "userToken"
+  },
+  {
+    "name": "Карточка проекта",
+    "path": "./projects/1001",
+    "token": "userToken"
+  },
+  {
+    "name": "Админка-пользователи",
+    "path": "./admin/users",
+    "token": "adminToken"
+  }
+]

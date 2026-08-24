@@ -9,7 +9,7 @@ $NEXUS_DOCKER = '127.0.0.1:8082'
 $NEXUS_USER = 'admin'
 $NEXUS_PASS = 'admin123'
 $IMAGE_NAME = 'browser-performance-runner'
-$IMAGE_TAG = '1.0.0'
+$IMAGE_TAG = '1.1.0'
 
 Write-Host '==> Starting Nexus'
 docker compose up -d nexus
@@ -108,4 +108,4 @@ Write-Host '    = Node + Playwright + Chromium + Lighthouse + src/profiles'
 Write-Host '  Nexus does NOT run measurements - Jenkins/K8s pull the image and run it.'
 Write-Host ''
 Write-Host 'Smoke run from Nexus image:'
-Write-Host "  docker run --rm --add-host=host.docker.internal:host-gateway -e TEST_STAND=http://host.docker.internal:1080/ -e PERFORMANCE_URLS_PROFILE=webtoursUrls -e RUN_TIME=30 -e INFLUX_ENABLED=false ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG} npx tsx src/check.ts"
+Write-Host "  docker run --rm --add-host=host.docker.internal:host-gateway -e TEST_STAND=http://host.docker.internal:1080/ -e PERFORMANCE_URLS_PROFILE=webtoursUrls -e RUN_TIME=30 -e INFLUX_ENABLED=false -e CHECK_ONLY=true ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG} /bin/bash /app/scripts/k8s-entrypoint.sh"

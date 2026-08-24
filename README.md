@@ -110,7 +110,7 @@ Then open **http://localhost:8080** → login **admin / admin** → job **browse
 | Parameter | Default (local demo) |
 |-----------|----------------------|
 | `TEST_STAND` | `http://host.docker.internal:1080/` |
-| `PERFORMANCE_URLS_PROFILE` | `webtoursUrls` (from Git: `src/profiles/webtoursUrls.ts`) |
+| `PERFORMANCE_URLS_PROFILE` | `webtoursUrls` (from Git: `profiles/webtoursUrls.json`) |
 | `RUN_TIME` / `PACING` / `PERF_REQUEST_TIMEOUT` | `60` / `5` / `90` |
 | `INFLUX_URL` | `http://host.docker.internal:8086` |
 | `CHECK_ONLY` | `false` (set `true` for preflight-only) |
@@ -159,8 +159,8 @@ Developer / CI
       v
 Nexus (localhost:8081 UI, :8082 Docker)
       |
-      stores: browser-performance-runner:1.0.0
-              (Node + Playwright + Chromium + Lighthouse + profiles)
+      stores: browser-performance-runner:1.1.0
+              (Node + Playwright + Chromium + Lighthouse + dist/ + profiles/)
       |
       v
 Jenkins / Kubernetes  →  docker pull  →  run measurements
@@ -175,7 +175,7 @@ npm run local:nexus
 |--|--|
 | UI | http://localhost:8081 (`admin` / `admin123`) |
 | Docker registry | `127.0.0.1:8082` |
-| Image | `127.0.0.1:8082/browser-performance-runner:1.0.0` |
+| Image | `127.0.0.1:8082/browser-performance-runner:1.1.0` |
 
 If `docker push` fails with HTTPS/HTTP error, add to Docker Desktop → Settings → Docker Engine:
 
@@ -207,8 +207,8 @@ InfluxDB + pod terminates
 
 | Source | What |
 |--------|------|
-| **Nexus** `:8082` | Docker image `browser-performance-runner:1.0.0` (runtime) |
-| **Gitea/GitLab** | URL profiles + Jenkinsfile (cloned in pod at start) |
+| **Nexus** `:8082` | Docker image `browser-performance-runner:1.1.0` (runtime) |
+| **Gitea/GitLab** | URL profiles JSON (`profiles/*.json`) + Jenkinsfile (cloned in pod) |
 | **host.docker.internal** | WebTours `:1080`, Influx `:8086`, Gitea `:3001` from pod |
 
 ### Setup
@@ -361,14 +361,14 @@ PACING=10
 
 ## URL profiles
 
-Profiles live in `src/profiles/`. Example (`loadTestUrls`):
+Profiles live in `profiles/*.json` (loaded at runtime; K8s can refresh them from Git without rebuilding the image). Example (`profiles/loadTestUrls.json`):
 
-```ts
-export const loadTestUrls = [
-  { name: 'Главная', path: './dashboard', token: 'userToken' },
-  { name: 'Карточка проекта', path: './projects/1001', token: 'userToken' },
-  { name: 'Админка-пользователи', path: './admin/users', token: 'adminToken' },
-];
+```json
+[
+  { "name": "Главная", "path": "./dashboard", "token": "userToken" },
+  { "name": "Карточка проекта", "path": "./projects/1001", "token": "userToken" },
+  { "name": "Админка-пользователи", "path": "./admin/users", "token": "adminToken" }
+]
 ```
 
 - `name` — **unique** page id (Influx tag `page` / Grafana).
