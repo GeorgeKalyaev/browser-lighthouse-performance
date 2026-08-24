@@ -82,8 +82,14 @@ pipeline {
                 '${templatePath}' > '${renderedPath}'
 
               kubectl apply -f '${renderedPath}'
-              kubectl wait --for=condition=complete job/${env.K8S_JOB_NAME} -n ${K8S_NAMESPACE} --timeout=3600s || true
+              set +e
+              kubectl wait --for=condition=complete job/${env.K8S_JOB_NAME} -n ${K8S_NAMESPACE} --timeout=3600s
+              wait_rc=\$?
+              if [ "\$wait_rc" -ne 0 ]; then
+                kubectl wait --for=condition=failed job/${env.K8S_JOB_NAME} -n ${K8S_NAMESPACE} --timeout=30s || true
+              fi
               kubectl logs -n ${K8S_NAMESPACE} job/${env.K8S_JOB_NAME} --tail=300 || true
+              set -e
               test "\$(kubectl get job/${env.K8S_JOB_NAME} -n ${K8S_NAMESPACE} -o jsonpath='{.status.succeeded}' 2>/dev/null)" = "1"
             """
           }

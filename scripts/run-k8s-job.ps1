@@ -57,10 +57,22 @@ try {
   Write-Host "==> Applying Job $jobName"
   kubectl apply -f $out
   Write-Host '==> Waiting for completion (up to 1h)'
-  kubectl wait --for=condition=complete "job/$jobName" -n browser-performance --timeout=3600s
-  if ($LASTEXITCODE -ne 0) { $exitCode = 1 }
+  # Succeeded OR Failed both finish the Job — do not hang on Failed
+  $deadline = (Get-Date).AddHours(1)
+  $exitCode = 1
+  while ((Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 5
+    $succeeded = kubectl get job $jobName -n browser-performance -o jsonpath='{.status.succeeded}' 2>$null
+    $failed = kubectl get job $jobName -n browser-performance -o jsonpath='{.status.failed}' 2>$null
+    if ($succeeded -eq '1') { $exitCode = 0; break }
+    if ($failed -and [int]$failed -gt 0) { $exitCode = 1; break }
+  }
   Write-Host '==> Logs'
-  kubectl logs -n browser-performance "job/$jobName" --tail=200
+  kubectl logs -n browser-performance "job/$jobName" --tail=200 2>$null
+  if ($exitCode -ne 0) {
+    Write-Host '==> Job did not succeed'
+    kubectl describe job $jobName -n browser-performance 2>$null | Select-Object -Last 30
+  }
 } catch {
   $exitCode = 1
   Write-Host "==> Job failed: $_"
