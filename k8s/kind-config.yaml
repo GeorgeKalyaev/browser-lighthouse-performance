@@ -1,0 +1,23 @@
+# Local Kubernetes cluster for Browser Performance Runner (kind + Docker Desktop).
+# Pods reach host services (Gitea, Nexus, Influx, WebTours) via host.docker.internal.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: browser-perf
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."host.docker.internal:8082"]
+      endpoint = ["http://host.docker.internal:8082"]
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: containerd-certs.d
+        containerPath: /etc/containerd/certs.d
+        readOnly: true
+        selinuxRelabel: false
+        propagation: None
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"

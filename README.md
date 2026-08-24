@@ -146,6 +146,137 @@ Panels: Speed Index, FCP, LCP, TTFB, TBT, CLS + averages table. Filters: `run_id
 
 ---
 
+## Local Nexus (Docker registry)
+
+Nexus **stores** the runner image — it does **not** execute Lighthouse.
+
+```text
+Developer / CI
+      |
+      v
+  docker build + push
+      |
+      v
+Nexus (localhost:8081 UI, :8082 Docker)
+      |
+      stores: browser-performance-runner:1.0.0
+              (Node + Playwright + Chromium + Lighthouse + profiles)
+      |
+      v
+Jenkins / Kubernetes  →  docker pull  →  run measurements
+```
+
+```powershell
+npm run local:nexus
+# or: .\scripts\setup-nexus.ps1
+```
+
+| | |
+|--|--|
+| UI | http://localhost:8081 (`admin` / `admin123`) |
+| Docker registry | `127.0.0.1:8082` |
+| Image | `127.0.0.1:8082/browser-performance-runner:1.0.0` |
+
+If `docker push` fails with HTTPS/HTTP error, add to Docker Desktop → Settings → Docker Engine:
+
+```json
+"insecure-registries": ["127.0.0.1:8082"]
+```
+
+Then Apply & Restart and re-run `npm run local:nexus`.
+
+---
+
+## Local Kubernetes (kind)
+
+Jenkins job **`browser-performance-k8s`** creates a **one-shot Job** → Pod starts with modest CPU/RAM, runs measurements, exits. Pod is removed after completion (`ttlSecondsAfterFinished`).
+
+```text
+Jenkins job trigger
+      |
+      v
+kubectl apply Job  (namespace browser-performance)
+      |
+      v
+Pod: image from Nexus (Playwright + Lighthouse baked in)
+      |-- git clone profiles from Gitea/GitLab (src/profiles/*.ts)
+      |-- Lighthouse loop
+      v
+InfluxDB + pod terminates
+```
+
+| Source | What |
+|--------|------|
+| **Nexus** `:8082` | Docker image `browser-performance-runner:1.0.0` (runtime) |
+| **Gitea/GitLab** | URL profiles + Jenkinsfile (cloned in pod at start) |
+| **host.docker.internal** | WebTours `:1080`, Influx `:8086`, Gitea `:3001` from pod |
+
+### Setup
+
+Prerequisites: Docker Desktop running, `winget install Kubernetes.kind`, stack up (`npm run local:up`, `local:git`, `local:nexus`).
+
+```powershell
+npm run local:k8s
+# or: .\scripts\setup-k8s.ps1
+```
+
+Creates kind cluster `browser-perf`, namespace `browser-performance`, secrets (Git + Nexus pull), exports `jenkins/kubeconfig` for Jenkins container.
+
+Rebuild Jenkins (adds `kubectl`):
+
+```powershell
+docker compose build jenkins
+docker compose up -d jenkins
+```
+
+Jenkins: http://localhost:8080 → job **`browser-performance-k8s`**.
+
+### Manual smoke test
+
+```powershell
+$env:RUN_TIME='30'
+$env:INFLUX_ENABLED='false'
+$env:CHECK_ONLY='true'
+.\scripts\run-k8s-job.ps1
+```
+
+Pod resources (PoC): requests `500m` CPU / `768Mi` RAM, limits `1500m` / `1536Mi`.
+
+Files: `k8s/job.template.yaml`, `Jenkinsfile.k8s`, `scripts/k8s-entrypoint.sh`.
+
+Company GitLab: change `GIT_URL` in `k8s/configmap.yaml`; image stays in corporate Nexus.
+
+### Disk space (important on Windows)
+
+This stack is heavy. Typical usage:
+
+| What | ~Size |
+|------|-------|
+| `browser-performance-runner` image (Playwright + Chromium) | 3.5 GB |
+| Nexus volume (stores that image) | 2 GB |
+| kind cluster (`kindest/node` + volume) | **5 GB** |
+| Jenkins / Grafana / Influx / Gitea | ~1.5 GB |
+| Build cache (after `docker build`) | 1–3 GB |
+
+Each K8s Job also runs `git clone` + `npm ci` inside the pod (temporary, pod deleted after 5 min).
+
+**Auto-cleanup after every K8s run** (built into `run-k8s-job.ps1` and Jenkins `browser-performance-k8s`):
+- deletes Job + Pod immediately (not waiting for TTL)
+- removes `k8s/.job*.yaml` temp files
+- prunes dangling Docker images/volumes and build cache (>24h)
+- prunes unused images inside kind node
+
+**Manual cleanup when not testing K8s:**
+
+```powershell
+npm run local:cleanup              # safe: orphan volumes, failed jobs, stale images
+.\scripts\cleanup-local.ps1 -StopKind   # also removes kind (~5 GB)
+```
+
+Do **not** use `kind load docker-image` on Windows — it duplicates the 3.5 GB image and can crash Docker Desktop.
+
+---
+
 ## Install (once)
 
 ```bash
@@ -378,19 +509,18 @@ One Lighthouse audit at a time. If `RUN_TIME` ends mid-audit, the current measur
 
 ---
 
-## Future Jenkins / Kubernetes / Nexus
+## CI integration notes
 
-Env vars are already CI-friendly. Jenkins can inject the same `RUN_ID` into JMeter and this runner, plus credentials for tokens and Influx.
+Env vars are CI-friendly. Jenkins can inject the same `RUN_ID` into JMeter and this runner, plus credentials for tokens and Influx.
 
-Suggested later packaging:
+Two Jenkins jobs:
 
-```text
-Nexus → browser-performance-runner:<version>
-  Node + Playwright + Chromium + Lighthouse
-       → Kubernetes Pod (fixed CPU/RAM; avoid tiny CPU limits — throttling skews SI/LCP/TBT)
-```
+| Job | Mode |
+|-----|------|
+| `browser-performance` | `docker run` Playwright (legacy local) |
+| `browser-performance-k8s` | Kubernetes Job, Nexus image, Git profiles in pod |
 
-Not in this PoC: Grafana dashboard, Jenkinsfile changes, K8s manifests, Nexus image, thresholds, mobile emulation, network throttling, parallel Lighthouse.
+Not in this PoC: combined JMeter+browser pipeline, thresholds, mobile emulation, network throttling, parallel Lighthouse.
 
 ---
 
@@ -410,6 +540,8 @@ src/
   bootstrap.ts    shared startup
   index.ts        full run
   check.ts        preflight only
+k8s/              kind config, Job template, ConfigMap, RBAC
+scripts/          setup-k8s.ps1, run-k8s-job.ps1, k8s-entrypoint.sh
 tests/            unit tests (no flaky Lighthouse e2e)
 ```
 

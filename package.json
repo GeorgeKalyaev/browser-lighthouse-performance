@@ -15,6 +15,9 @@
     "local:up": "powershell -ExecutionPolicy Bypass -File ./scripts/start-local.ps1",
     "local:jenkins": "powershell -ExecutionPolicy Bypass -File ./scripts/start-jenkins.ps1",
     "local:git": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-git-scm.ps1",
+    "local:nexus": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-nexus.ps1",
+    "local:k8s": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-k8s.ps1",
+    "local:cleanup": "powershell -ExecutionPolicy Bypass -File ./scripts/cleanup-local.ps1",
     "test": "tsx --test tests/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

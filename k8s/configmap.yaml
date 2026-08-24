@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: browser-performance-runner
+  namespace: browser-performance
+  labels:
+    app.kubernetes.io/name: browser-performance-runner
+data:
+  # Git SCM — Gitea locally; replace with company GitLab URL in production.
+  GIT_SYNC: "true"
+  GIT_URL: "http://host.docker.internal:3001/gitadmin/browser-performance-runner.git"
+  GIT_BRANCH: "main"
+  # Measurement defaults (Jenkins overrides via Job env)
+  TEST_STAND: "http://host.docker.internal:1080/"
+  PERFORMANCE_URLS_PROFILE: "webtoursUrls"
+  RUN_TIME: "60"
+  PACING: "5"
+  PERF_REQUEST_TIMEOUT: "90"
+  CACHE_MODE: "cold"
+  INFLUX_ENABLED: "true"
+  INFLUX_URL: "http://host.docker.internal:8086"
+  INFLUX_DATABASE: "performance"
+  INFLUX_MEASUREMENT: "browser_performance"
+  AUTH_STRATEGY: "bearer-header"
+  CHECK_ONLY: "false"
+  # Runner image from Nexus (Docker registry on host)
+  RUNNER_IMAGE: "host.docker.internal:8082/browser-performance-runner:1.0.0"

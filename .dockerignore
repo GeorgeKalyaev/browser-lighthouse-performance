@@ -1,0 +1,23 @@
+# Dependencies & build artifacts
+node_modules
+dist
+results
+coverage
+
+# Secrets / local state
+.env
+.env.local
+.git
+.gitignore
+
+# Docs / IDE (keep image lean)
+*.md
+.vscode
+.idea
+
+# Local stack data not needed in image
+grafana
+jenkins
+scripts/*
+!scripts/k8s-entrypoint.sh
+k8s

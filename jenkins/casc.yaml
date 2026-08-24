@@ -85,3 +85,39 @@ jobs:
           stringParam('RUN_ID', '', 'Optional shared run id (empty = auto jenkins-<BUILD_NUMBER>)')
         }
       }
+
+      pipelineJob('browser-performance-k8s') {
+        description('Kubernetes Job: Nexus image + Git profiles, pod stops after test')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url(gitUrl)
+                  credentials('git-scm')
+                }
+                branches('*/main')
+                extensions {
+                  wipeWorkspace()
+                }
+              }
+            }
+            scriptPath('Jenkinsfile.k8s')
+            lightweight(true)
+          }
+        }
+        parameters {
+          stringParam('TEST_STAND', 'http://host.docker.internal:1080/', 'Application base URL')
+          choiceParam('PERFORMANCE_URLS_PROFILE', ['webtoursUrls', 'loadTestUrls', 'smokeUrls', 'criticalUrls', 'adminUrls'], 'URL profile from src/profiles (Git)')
+          stringParam('RUN_TIME', '60', 'Duration seconds')
+          stringParam('PACING', '5', 'Pause between measurements (sec)')
+          stringParam('PERF_REQUEST_TIMEOUT', '90', 'Per-page timeout (sec)')
+          choiceParam('CACHE_MODE', ['cold', 'warm'], 'Cache mode')
+          stringParam('INFLUX_URL', 'http://host.docker.internal:8086', 'InfluxDB 1.8 URL')
+          stringParam('INFLUX_DATABASE', 'performance', 'Influx database')
+          stringParam('INFLUX_MEASUREMENT', 'browser_performance', 'Influx measurement')
+          booleanParam('INFLUX_ENABLED', true, 'Send metrics to InfluxDB')
+          booleanParam('CHECK_ONLY', false, 'Run preflight only')
+          stringParam('RUN_ID', '', 'Optional shared run id (empty = auto jenkins-k8s-<BUILD_NUMBER>)')
+        }
+      }

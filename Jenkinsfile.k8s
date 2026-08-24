@@ -1,0 +1,116 @@
+/**
+ * Browser Performance Runner — Kubernetes Job mode.
+ *
+ * Flow:
+ *   1) Jenkins creates a K8s Job (small pod, backoffLimit=0)
+ *   2) Pod pulls runner image from Nexus (Playwright + Lighthouse baked in)
+ *   3) Entrypoint clones URL profiles from Git (Gitea / GitLab)
+ *   4) Measurements → InfluxDB; pod exits; Job completes; pod is removed
+ */
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+    timeout(time: 4, unit: 'HOURS')
+  }
+
+  environment {
+    KUBECONFIG = '/var/jenkins_home/kubeconfig'
+    K8S_NAMESPACE = 'browser-performance'
+    RUNNER_IMAGE = "${env.RUNNER_IMAGE ?: 'host.docker.internal:8082/browser-performance-runner:1.0.0'}"
+    GIT_URL = "${env.GIT_URL ?: 'http://host.docker.internal:3001/gitadmin/browser-performance-runner.git'}"
+    GIT_BRANCH = "${env.GIT_BRANCH ?: 'main'}"
+  }
+
+  stages {
+    stage('Resolve RUN_ID') {
+      steps {
+        script {
+          def runId = params.RUN_ID?.trim()
+          if (!runId) {
+            runId = "jenkins-k8s-${env.BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
+          }
+          env.EFFECTIVE_RUN_ID = runId
+          env.K8S_JOB_NAME = "browser-perf-${env.BUILD_NUMBER}"
+          echo "RUN_ID=${env.EFFECTIVE_RUN_ID}"
+          echo "K8S_JOB=${env.K8S_JOB_NAME}"
+        }
+      }
+    }
+
+    stage('Kubernetes Browser Performance') {
+      steps {
+        withCredentials([
+          string(credentialsId: 'USER_TOKEN', variable: 'USER_TOKEN'),
+          string(credentialsId: 'ADMIN_TOKEN', variable: 'ADMIN_TOKEN'),
+          string(credentialsId: 'INFLUX_USERNAME', variable: 'INFLUX_USERNAME'),
+          string(credentialsId: 'INFLUX_PASSWORD', variable: 'INFLUX_PASSWORD')
+        ]) {
+          script {
+            def influxEnabled = params.INFLUX_ENABLED ? 'true' : 'false'
+            def checkOnly = params.CHECK_ONLY ? 'true' : 'false'
+            def templatePath = "${env.WORKSPACE}/k8s/job.template.yaml"
+            def renderedPath = "${env.WORKSPACE}/k8s/.job.${env.BUILD_NUMBER}.yaml"
+
+            sh """
+              set -eu
+              test -f '${KUBECONFIG}' || { echo 'Missing ${KUBECONFIG}. Run scripts/setup-k8s.ps1 on the host.'; exit 1; }
+              kubectl get ns '${K8S_NAMESPACE}' >/dev/null
+
+              sed \\
+                -e 's|__JOB_NAME__|${env.K8S_JOB_NAME}|g' \\
+                -e 's|__RUN_ID__|${env.EFFECTIVE_RUN_ID}|g' \\
+                -e 's|__RUNNER_IMAGE__|${RUNNER_IMAGE}|g' \\
+                -e 's|__TEST_STAND__|${params.TEST_STAND}|g' \\
+                -e 's|__PERFORMANCE_URLS_PROFILE__|${params.PERFORMANCE_URLS_PROFILE}|g' \\
+                -e 's|__RUN_TIME__|${params.RUN_TIME}|g' \\
+                -e 's|__PACING__|${params.PACING}|g' \\
+                -e 's|__PERF_REQUEST_TIMEOUT__|${params.PERF_REQUEST_TIMEOUT}|g' \\
+                -e 's|__CACHE_MODE__|${params.CACHE_MODE}|g' \\
+                -e 's|__INFLUX_ENABLED__|${influxEnabled}|g' \\
+                -e 's|__INFLUX_URL__|${params.INFLUX_URL}|g' \\
+                -e 's|__INFLUX_DATABASE__|${params.INFLUX_DATABASE}|g' \\
+                -e 's|__INFLUX_MEASUREMENT__|${params.INFLUX_MEASUREMENT}|g' \\
+                -e 's|__CHECK_ONLY__|${checkOnly}|g' \\
+                -e 's|__GIT_URL__|${GIT_URL}|g' \\
+                -e 's|__GIT_BRANCH__|${GIT_BRANCH}|g' \\
+                '${templatePath}' > '${renderedPath}'
+
+              kubectl apply -f '${renderedPath}'
+              kubectl wait --for=condition=complete job/${env.K8S_JOB_NAME} -n ${K8S_NAMESPACE} --timeout=3600s || true
+              kubectl logs -n ${K8S_NAMESPACE} job/${env.K8S_JOB_NAME} --tail=300 || true
+              test "\$(kubectl get job/${env.K8S_JOB_NAME} -n ${K8S_NAMESPACE} -o jsonpath='{.status.succeeded}' 2>/dev/null)" = "1"
+            """
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      script {
+        sh """
+          set +e
+          bash '${env.WORKSPACE}/scripts/cleanup-after-k8s.sh' '${env.K8S_JOB_NAME}'
+          docker image prune -f >/dev/null 2>&1 || true
+          docker builder prune -f --filter 'until=24h' >/dev/null 2>&1 || true
+        """
+      }
+      echo "Finished RUN_ID=${env.EFFECTIVE_RUN_ID}"
+      echo "Grafana: http://localhost:3000/d/browser-performance-lighthouse"
+    }
+    failure {
+      script {
+        sh """
+          set +e
+          kubectl logs -n ${K8S_NAMESPACE} job/${env.K8S_JOB_NAME} --tail=300 2>/dev/null || true
+          kubectl describe job/${env.K8S_JOB_NAME} -n ${K8S_NAMESPACE} 2>/dev/null || true
+        """
+      }
+    }
+  }
+}

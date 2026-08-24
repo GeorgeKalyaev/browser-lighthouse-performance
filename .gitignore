@@ -30,5 +30,7 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Coverage
-coverage/
+# Local stack / CI artifacts
+jenkins/kubeconfig
+k8s/.job*.yaml
+

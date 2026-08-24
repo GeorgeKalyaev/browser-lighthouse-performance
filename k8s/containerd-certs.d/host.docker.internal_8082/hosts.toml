@@ -1,0 +1,4 @@
+server = "http://host.docker.internal:8082"
+
+[host."http://host.docker.internal:8082"]
+  capabilities = ["pull", "resolve", "push"]

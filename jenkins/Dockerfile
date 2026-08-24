@@ -2,7 +2,7 @@ FROM jenkins/jenkins:lts-jdk21
 
 USER root
 
-# Docker CLI so Pipeline can `docker run` Playwright jobs via mounted docker.sock
+# Docker CLI (docker run) + kubectl (Kubernetes Job mode)
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl \
   && install -m 0755 -d /etc/apt/keyrings \
@@ -12,7 +12,10 @@ RUN apt-get update \
     > /etc/apt/sources.list.d/docker.list \
   && apt-get update \
   && apt-get install -y --no-install-recommends docker-ce-cli \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    -o /usr/local/bin/kubectl \
+  && chmod +x /usr/local/bin/kubectl
 
 USER jenkins
 
