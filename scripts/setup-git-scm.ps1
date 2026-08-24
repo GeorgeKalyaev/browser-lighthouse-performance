@@ -18,7 +18,7 @@ do {
 } while ((Get-Date) -lt $deadline)
 
 Write-Host "==> Ensuring admin user"
-docker compose exec -T gitea gitea admin user create --admin --username gitadmin --password gitadmin --email gitadmin@local --must-change-password=false 2>$null | Out-Null
+docker compose exec -T -u git gitea gitea admin user create --admin --username gitadmin --password gitadmin --email gitadmin@local --must-change-password=false 2>$null | Out-Null
 
 Write-Host "==> Creating repository (idempotent)"
 $pair = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('gitadmin:gitadmin'))
