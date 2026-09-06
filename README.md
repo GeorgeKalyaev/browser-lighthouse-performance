@@ -6,8 +6,6 @@ Browser performance **probe**: Playwright готовит сессию/auth, **Li
 
 Проверено локально на **HP/Mercury WebTours**, плюс полный контур **Jenkins → Nexus → Kubernetes (kind Job)**.
 
-Репозиторий: https://github.com/GeorgeKalyaev/browser-lighthouse-performance
-
 ---
 
 ## Как читать этот README
