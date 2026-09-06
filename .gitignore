@@ -1,8 +1,10 @@
 # Dependencies
 node_modules/
 
-# Build
+# Build / coverage
 dist/
+coverage/
+*.tsbuildinfo
 
 # Secrets & local env
 .env
@@ -16,7 +18,7 @@ storage-state.json
 tmp-browser-profile/
 .lighthouseci/
 
-# Results (may contain URLs/metadata; never tokens, but keep local)
+# Results (local only)
 results/
 
 # Logs / OS
@@ -25,12 +27,15 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE / editors / agent tooling (local)
 .idea/
 .vscode/
+.cursor/
 *.swp
+*.swo
+*~
 
 # Local stack / CI artifacts
 jenkins/kubeconfig
 k8s/.job*.yaml
-
+k8s/.job-*.yaml

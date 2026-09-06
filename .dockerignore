@@ -8,12 +8,12 @@ coverage
 .env
 .env.local
 .git
-.gitignore
 
 # Docs / IDE (keep image lean)
 *.md
 .vscode
 .idea
+.cursor
 
 # Local stack data not needed in image
 grafana
