@@ -72,7 +72,7 @@ jobs:
         }
         parameters {
           stringParam('TEST_STAND', 'http://host.docker.internal:1080/', 'Application base URL')
-          choiceParam('PERFORMANCE_URLS_PROFILE', ['webtoursUrls', 'loadTestUrls', 'smokeUrls', 'criticalUrls', 'adminUrls'], 'URL profile from src/profiles (Git)')
+          choiceParam('PERFORMANCE_URLS_PROFILE', ['webtoursUrls', 'loadTestUrls', 'smokeUrls', 'criticalUrls', 'adminUrls'], 'URL profile from profiles/*.json (Git)')
           stringParam('RUN_TIME', '60', 'Duration seconds')
           stringParam('PACING', '5', 'Pause between measurements (sec)')
           stringParam('PERF_REQUEST_TIMEOUT', '90', 'Per-page timeout (sec)')
@@ -108,7 +108,7 @@ jobs:
         }
         parameters {
           stringParam('TEST_STAND', 'http://host.docker.internal:1080/', 'Application base URL')
-          choiceParam('PERFORMANCE_URLS_PROFILE', ['webtoursUrls', 'loadTestUrls', 'smokeUrls', 'criticalUrls', 'adminUrls'], 'URL profile from src/profiles (Git)')
+          choiceParam('PERFORMANCE_URLS_PROFILE', ['webtoursUrls', 'loadTestUrls', 'smokeUrls', 'criticalUrls', 'adminUrls'], 'URL profile from profiles/*.json (Git)')
           stringParam('RUN_TIME', '60', 'Duration seconds')
           stringParam('PACING', '5', 'Pause between measurements (sec)')
           stringParam('PERF_REQUEST_TIMEOUT', '90', 'Per-page timeout (sec)')

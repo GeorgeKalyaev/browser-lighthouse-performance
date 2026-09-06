@@ -104,7 +104,7 @@ Write-Host "  Image:    ${NEXUS_DOCKER}/${IMAGE_NAME}:${IMAGE_TAG}"
 Write-Host ''
 Write-Host 'What lives in Nexus:'
 Write-Host '  Docker image browser-performance-runner'
-Write-Host '    = Node + Playwright + Chromium + Lighthouse + src/profiles'
+Write-Host '    = Node + Playwright + Chromium + Lighthouse + profiles/*.json'
 Write-Host '  Nexus does NOT run measurements - Jenkins/K8s pull the image and run it.'
 Write-Host ''
 Write-Host 'Smoke run from Nexus image:'

@@ -24,7 +24,7 @@ pipeline {
   stages {
     stage('Show checkout') {
       steps {
-        sh 'pwd && ls -la && ls -la src/profiles || true'
+        sh 'pwd && ls -la && ls -la profiles || true'
       }
     }
 
