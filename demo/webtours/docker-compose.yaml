@@ -1,0 +1,6 @@
+services:
+  webtours:
+    build: .
+    ports:
+      - "1080:80"
+    restart: unless-stopped

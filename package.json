@@ -1,7 +1,7 @@
 {
-  "name": "browser-performance-runner",
+  "name": "browser-lighthouse-performance",
   "version": "1.1.0",
-  "description": "Local Browser Performance Runner: Playwright (auth/browser) + Lighthouse (metrics) + InfluxDB 1.8",
+  "description": "Browser performance probe: Playwright + Lighthouse → InfluxDB 1.8 / Grafana (optional Jenkins + kind)",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,6 +14,7 @@
     "browser:performance": "tsx src/index.ts",
     "browser:performance:dist": "node dist/index.js",
     "browser:performance:check:dist": "node dist/check.js",
+    "bootstrap": "powershell -ExecutionPolicy Bypass -File ./scripts/bootstrap.ps1",
     "local:up": "powershell -ExecutionPolicy Bypass -File ./scripts/start-local.ps1",
     "local:jenkins": "powershell -ExecutionPolicy Bypass -File ./scripts/start-jenkins.ps1",
     "local:git": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-git-scm.ps1",

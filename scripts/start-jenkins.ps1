@@ -1,18 +1,14 @@
-# Start full local stack: Git SCM + Influx + Grafana + Jenkins (+ WebTours)
+# Full local CI-ish stack: Gitea + Influx + Grafana + Jenkins + WebTours
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 
 & "$PSScriptRoot\setup-git-scm.ps1"
 
-Write-Host "==> Ensuring WebTours"
-if (Test-Path 'C:\Users\kalya\k6Test\webtours-docker\docker-compose.yaml') {
-  Push-Location 'C:\Users\kalya\k6Test\webtours-docker'
-  docker compose up -d
-  Pop-Location
-}
+Write-Host "==> WebTours"
+docker compose -f demo/webtours/docker-compose.yaml up -d --build
 
-Write-Host "==> Rebuilding Jenkins (git plugin + SCM job)"
+Write-Host "==> Jenkins"
 docker compose up -d --build jenkins
 
 Write-Host "==> Waiting for Jenkins"
@@ -39,4 +35,4 @@ Write-Host "  Influx:   http://localhost:8086  db=performance"
 Write-Host "  WebTours: http://127.0.0.1:1080/WebTours/"
 Write-Host ""
 Write-Host "Jenkins checks out profiles from Git on every build."
-Write-Host "To use company GitLab: push this repo there and set GIT_URL in docker-compose / Jenkins."
+Write-Host "Company GitLab: push there, set GIT_URL in docker-compose / Jenkins."

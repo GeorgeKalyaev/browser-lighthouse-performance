@@ -1,5 +1,5 @@
 # Bootstrap local Git SCM (Gitea), create repo, push current project.
-# For company GitLab: create the project there, change remote URL, push — Jenkins GIT_URL follows.
+# Uses remote name "gitea" so GitHub/GitLab "origin" stays untouched.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
@@ -31,31 +31,31 @@ try {
 
 if (-not (Test-Path '.git')) {
   git init -b main
-  git config user.name 'George Kalyaev'
-  git config user.email 'george.kalyaev@local'
 }
 
-$remotes = git remote 2>$null
-if ($remotes -notcontains 'origin') {
-  git remote add origin 'http://gitadmin:gitadmin@127.0.0.1:3001/gitadmin/browser-performance-runner.git'
+$giteaUrl = 'http://gitadmin:gitadmin@127.0.0.1:3001/gitadmin/browser-performance-runner.git'
+$remotes = @(git remote 2>$null)
+if ($remotes -notcontains 'gitea') {
+  git remote add gitea $giteaUrl
 } else {
-  git remote set-url origin 'http://gitadmin:gitadmin@127.0.0.1:3001/gitadmin/browser-performance-runner.git'
+  git remote set-url gitea $giteaUrl
 }
 
 git add -A
 $pending = git status --porcelain
 if ($pending) {
-  git commit -m "chore: browser performance runner with SCM profiles and Grafana dashboard"
+  git commit -m "chore: sync local SCM with current tree"
 }
 
-git push -u origin main
+git push -u gitea main
 
 Write-Host ""
 Write-Host "Git SCM ready:"
 Write-Host "  UI:     http://localhost:3001  (gitadmin / gitadmin)"
 Write-Host "  Repo:   http://localhost:3001/gitadmin/browser-performance-runner"
 Write-Host "  Clone:  http://127.0.0.1:3001/gitadmin/browser-performance-runner.git"
+Write-Host "  Remote: gitea (origin left as-is)"
 Write-Host ""
-Write-Host "Profiles in Git: src/profiles/*.ts"
+Write-Host "Profiles in Git: profiles/*.json"
 Write-Host "Grafana:         http://localhost:3000  (admin / admin)"
 Write-Host "Dashboard:       http://localhost:3000/d/browser-performance-lighthouse"

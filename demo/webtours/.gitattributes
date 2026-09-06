@@ -1,0 +1,4 @@
+* text=auto
+*.pl text eol=lf
+app/cgi-bin/flightData text eol=lf
+app/cgi-bin/systemPaths text eol=lf

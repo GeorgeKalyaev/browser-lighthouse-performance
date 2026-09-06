@@ -1,22 +1,16 @@
-# Start local demo stack: InfluxDB 1.8 + WebTours, then print next steps.
+# Bring up Influx + Grafana + WebTours demo, then print what to run next.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-if (-not (Test-Path (Join-Path $root 'package.json'))) {
-  $root = $PSScriptRoot
-}
+Set-Location $root
 
-Write-Host "==> Starting InfluxDB (browser-performance-runner)"
-Push-Location $root
-docker compose up -d
-Pop-Location
+Write-Host "==> InfluxDB + Grafana"
+docker compose up -d influxdb grafana
 
-Write-Host "==> Starting WebTours"
-Push-Location 'C:\Users\kalya\k6Test\webtours-docker'
-docker compose up -d
-Pop-Location
+Write-Host "==> WebTours (demo target on :1080)"
+docker compose -f demo/webtours/docker-compose.yaml up -d --build
 
 Write-Host "==> Waiting for health"
-$deadline = (Get-Date).AddMinutes(2)
+$deadline = (Get-Date).AddMinutes(3)
 do {
   Start-Sleep -Seconds 2
   $influx = $false
@@ -33,19 +27,28 @@ do {
 } while ((Get-Date) -lt $deadline)
 
 if (-not ($influx -and $wt)) {
-  Write-Error "Services not ready (influx=$influx webtours=$wt)"
+  Write-Error "Services not ready (influx=$influx webtours=$wt). Is Docker Desktop running?"
 }
 
 try {
   Invoke-WebRequest 'http://127.0.0.1:8086/query?q=CREATE%20DATABASE%20performance' -Method POST -UseBasicParsing | Out-Null
 } catch {}
 
+if (-not (Test-Path '.env')) {
+  Copy-Item '.env.example' '.env'
+  Write-Host "==> Created .env from .env.example"
+}
+
 Write-Host ""
 Write-Host "Ready."
 Write-Host "  WebTours:  http://127.0.0.1:1080/WebTours/"
-Write-Host "  InfluxDB:  http://127.0.0.1:8086"
+Write-Host "  InfluxDB:  http://127.0.0.1:8086  (db=performance)"
+Write-Host "  Grafana:   http://127.0.0.1:3000  (admin / admin)"
 Write-Host ""
-Write-Host "Next:"
-Write-Host "  cd $root"
+Write-Host "First time on this machine:"
+Write-Host "  npm ci"
+Write-Host "  npm run browser:install"
+Write-Host ""
+Write-Host "Then:"
 Write-Host "  npm run browser:performance:check"
 Write-Host "  npm run browser:performance"
