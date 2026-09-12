@@ -1,123 +1,165 @@
 # browser-lighthouse-performance
 
-Замер производительности страниц в браузере: **Playwright** (сессия / auth) + **Lighthouse** (SI, FCP, LCP, TBT, CLS, TTFB).
+[![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
+[![Lighthouse](https://img.shields.io/badge/Lighthouse-12-f04)](https://developer.chrome.com/docs/lighthouse)
+[![Playwright](https://img.shields.io/badge/Playwright-Chromium-2EAD33)](https://playwright.dev/)
+[![Version](https://img.shields.io/badge/version-1.1.0-informational)](./package.json)
 
-Результат:
-- консоль
-- файлы `results/<id>/`
-- **InfluxDB 1.8** (любой ваш, URL задаёте сами)
+> Browser performance **probe**: Playwright готовит сессию и auth, Lighthouse меряет страницу, метрики уходят в консоль / JSON / **ваш InfluxDB 1.8**. Смотреть можно в **любой Grafana**.
 
-Смотреть графики — в **любой Grafana**: создаёте datasource на этот Influx и импортируете дашборд из репо.
+---
 
-Это **не** нагрузка. JMeter / k6 гоняете отдельно; runner можно запускать **одновременно** на том же стенде. `PACING` не ставьте слишком маленьким, чтобы аудиты сами не давили стенд.
+## Live Demo
 
-Проверено на **HP/Mercury WebTours** и на контуре **Jenkins → Nexus → Kubernetes (kind Job)**.
+_(не указано)_ — публичного деплоя / GitHub Pages нет.
+
+Локальное демо поднимается одной командой (`npm run bootstrap`) на **HP/Mercury WebTours** + InfluxDB + Grafana. См. [Установка и запуск](#установка-и-запуск).
+
+---
+
+## Краткое описание
+
+**browser-lighthouse-performance** — инструмент для замера **пользовательской** производительности веб-страниц во время (или рядом с) нагрузочным тестированием.
+
+| | |
+|--|--|
+| **Что делает** | Циклически открывает URL из профиля, гоняет Lighthouse (SI, FCP, LCP, TBT, CLS, TTFB), пишет результат |
+| **Для кого** | Performance / QA / DevOps инженеры, которым нужны браузерные метрики рядом с JMeter/k6 |
+| **Чем полезен** | Не путается с нагрузкой: это probe, не генератор трафика. Профили в JSON, стенд и Influx — в env, образ — в Nexus, прогон — Kubernetes Job / Jenkins |
+
+Нагрузку (JMeter, k6, …) запускаете **отдельно и параллельно** на том же стенде. Держите `PACING` разумным, чтобы аудиты сами не давили систему.
+
+Проверено: **WebTours** + локальный контур **Jenkins → Nexus → Kubernetes (kind)**.
 
 ---
 
 ## Оглавление
 
-1. [Что это и как устроено](#1-что-это-и-как-устроено)
-2. [Шаг за шагом: поднять демо у себя](#2-шаг-за-шагом-поднять-демо-у-себя)
-3. [Шаг за шагом: свой стенд и свои страницы](#3-шаг-за-шагом-свой-стенд-и-свои-страницы)
-4. [Шаг за шагом: свой InfluxDB и своя Grafana](#4-шаг-за-шагом-свой-influxdb-и-своя-grafana)
-5. [Шаг за шагом: выкат для DevOps (Nexus / K8s / Jenkins)](#5-шаг-за-шагом-выкат-для-devops-nexus--k8s--jenkins)
-6. [Справочник: переменные, метрики, файлы, версии](#6-справочник-переменные-метрики-файлы-версии)
-7. [Если что-то не работает](#7-если-что-то-не-работает)
+- [Live Demo](#live-demo)
+- [Краткое описание](#краткое-описание)
+- [Архитектура](#архитектура)
+- [Технологии и стек](#технологии-и-стек)
+- [Установка и запуск](#установка-и-запуск)
+- [Конфигурация](#конфигурация)
+- [Структура проекта](#структура-проекта)
+- [Примеры использования](#примеры-использования)
+- [CI / DevOps](#ci--devops)
+- [Метрики](#метрики)
+- [FAQ](#faq)
+- [Roadmap / вне скоупа](#roadmap--вне-скоупа)
 
 ---
 
-## 1. Что это и как устроено
-
-### Роли компонентов
-
-| Компонент | Что делает |
-|-----------|------------|
-| Runner (этот репо) | Открывает страницы, гоняет Lighthouse, пишет метрики |
-| `profiles/*.json` | Список URL для замера |
-| `.env` / параметры CI | Стенд, время прогона, auth, куда писать Influx |
-| **InfluxDB 1.8** | Хранит точки метрик |
-| **Grafana** | Только рисует; сама ничего не замеряет |
-| **Nexus** | Хранит Docker-образ раннера (не запускает тесты) |
-| **Kubernetes Job** | Поднимает Pod на время прогона и гасит его |
-| **Jenkins** | Жмёт кнопку / передаёт параметры в Job |
-| **Git** | Профили и Jenkinsfile (локально в PoC — Gitea) |
-
-### Схема runner’а
+## Архитектура
 
 ```text
-  profiles/*.json          .env или параметры Job
-  (какие страницы)         (стенд, Influx, токены)
-           \                     /
-            v                   v
-        ┌──────────────────────────┐
-        │  Playwright → auth       │
-        │  Lighthouse → метрики    │
-        └────────────┬─────────────┘
-                     │
-       ┌─────────────┼─────────────┐
-       v             v             v
-    console    results/<id>/   InfluxDB 1.8
-                               (INFLUX_URL)
-                                     │
-                                     v
-                                  Grafana
+  profiles/*.json                 .env / параметры Job
+  (какие страницы)                (стенд, Influx, auth)
+           \                           /
+            v                         v
+        ┌────────────────────────────────┐
+        │  Playwright  →  auth / cache   │
+        │  Lighthouse  →  SI, FCP, LCP…  │
+        └────────────────┬───────────────┘
+                         │
+           ┌─────────────┼─────────────┐
+           v             v             v
+        console    results/<id>/   InfluxDB 1.8
+                                   (ваш INFLUX_URL)
+                                         │
+                                         v
+                                      Grafana
+                                   (ваша или демо)
 ```
 
-### Схема CI (как в этом репо)
+CI-контур из репозитория:
 
 ```text
   Git (profiles + Jenkinsfile)
-           │
-           v
-       Jenkins  ──▶  Kubernetes Job (Pod)
-                         │
-                         │ docker pull
-                         v
-                       Nexus
-                  (образ :1.1.0)
-                         │
-                         │ метрики
-                         v
-                    InfluxDB  ◀── Grafana
+            │
+            v
+        Jenkins  ──▶  Kubernetes Job
+                          │ pull
+                          v
+                        Nexus
+                   (образ :1.1.0)
+                          │
+                          v
+                     InfluxDB ◀── Grafana
 ```
 
-Рядом с нагрузкой:
-
-```text
-  JMeter / k6          этот runner
-  (нагрузка)           (Lighthouse)
-       \                   /
-        └── одновременно ──┘
-              один стенд
-```
+| Компонент | Роль |
+|-----------|------|
+| **Runner** | Замер страниц |
+| **Nexus** | Хранит Docker-образ (сам тесты не гоняет) |
+| **Kubernetes Job** | One-shot Pod → прогон → выход |
+| **Jenkins** | Триггер и параметры |
+| **InfluxDB** | Хранилище метрик |
+| **Grafana** | Только UI поверх Influx |
 
 ---
 
-## 2. Шаг за шагом: поднять демо у себя
+## Технологии и стек
 
-Цель: за 10–15 минут увидеть метрики WebTours в Grafana на своём ПК.
+### Runtime (из `package.json`)
 
-### Что нужно заранее
+| Пакет | Версия | Назначение |
+|-------|--------|------------|
+| Node.js | ≥ 20 | runtime |
+| TypeScript | ^5.7 | исходники |
+| `playwright` | ^1.50 | браузер, auth, cache |
+| `lighthouse` | ^12.4 | performance audit |
+| `dotenv` | ^16.4 | загрузка `.env` |
+| `tsx` | ^4.19 | локальный запуск TS (dev) |
 
-- Docker Desktop (запущен)
-- Node.js **20+**
-- Windows: PowerShell  
-  Linux/macOS: bash
+### Docker / инфраструктура (из compose и Dockerfile)
 
-### Шаг 2.1 — клонировать
+| Компонент | Версия / образ |
+|-----------|----------------|
+| Base image | `mcr.microsoft.com/playwright:v1.62.1-jammy` |
+| Image tag | `browser-performance-runner:1.1.0` |
+| InfluxDB | `influxdb:1.8` |
+| Grafana | `grafana/grafana:9.5.18` |
+| Gitea (локальный SCM) | `gitea/gitea:1.22.3` |
+| Nexus | `sonatype/nexus3:3.70.1` |
+| Kubernetes (PoC) | kind, cluster `browser-perf` |
+| Демо-стенд | HP/Mercury WebTours (`demo/webtours`, порт `1080`) |
 
-```powershell
+### Браузер (код)
+
+Задаётся в `src/config/browserConfig.ts` (не через env):
+
+- headless: `true`
+- viewport: `1920×1080`
+- deviceScaleFactor: `1`
+- стабильные Chromium launch flags
+
+Через env: `CHROME_PATH`, `CACHE_MODE` (`cold` \| `warm`).
+
+---
+
+## Установка и запуск
+
+### Требования
+
+- Node.js **≥ 20**
+- Docker Desktop (для демо-стенда / Influx / Grafana / полного CI-контура)
+- Windows: PowerShell · Linux/macOS: bash  
+- Yarn _(не указано)_ — проект на **npm** (`package-lock.json`)
+
+### Вариант A — быстрый старт (рекомендуется)
+
+```bash
 git clone https://github.com/GeorgeKalyaev/browser-lighthouse-performance.git
 cd browser-lighthouse-performance
 ```
-
-### Шаг 2.2 — один скрипт установки
 
 **Windows:**
 
 ```powershell
 npm run bootstrap
+npm run browser:performance
 ```
 
 **Linux / macOS:**
@@ -125,339 +167,243 @@ npm run bootstrap
 ```bash
 chmod +x scripts/*.sh
 ./scripts/bootstrap.sh
-```
-
-Что сделает скрипт сам:
-
-1. `npm ci` (зависимости)
-2. установка Chromium для Playwright
-3. поднятие **InfluxDB + Grafana + WebTours**
-4. копирование `.env.example` → `.env` (если `.env` ещё нет)
-5. preflight-проверка
-
-Первый запуск может занять несколько минут (build WebTours + pull образов).
-
-### Шаг 2.3 — прогон
-
-```powershell
 npm run browser:performance
 ```
 
-По умолчанию: ~60 секунд, профиль `webtoursUrls`, стенд `http://127.0.0.1:1080/`.
+`bootstrap` сделает: `npm ci` → Chromium → Influx + Grafana + WebTours → `.env` из примера → preflight.
 
-Сначала можно только проверку без цикла:
+| Сервис | URL |
+|--------|-----|
+| WebTours | http://127.0.0.1:1080/WebTours/ |
+| InfluxDB | http://127.0.0.1:8086 (БД `performance`) |
+| Grafana | http://127.0.0.1:3000 (`admin` / `admin`) |
+| Дашборд | http://127.0.0.1:3000/d/browser-performance-lighthouse |
 
-```powershell
+### Вариант B — только runner (стенд уже есть)
+
+```bash
+npm ci
+npm run browser:install
+cp .env.example .env
+# отредактируйте TEST_STAND, профиль, токены, INFLUX_URL
 npm run browser:performance:check
+npm run browser:performance
 ```
 
-### Шаг 2.4 — куда смотреть результат
+### Вариант C — Docker-образ
 
-| Куда | Адрес / путь |
-|------|----------------|
-| WebTours | http://127.0.0.1:1080/WebTours/ |
-| InfluxDB | http://127.0.0.1:8086 — БД `performance`, auth выключен |
-| Grafana | http://127.0.0.1:3000 — логин `admin` / `admin` |
-| Дашборд | http://127.0.0.1:3000/d/browser-performance-lighthouse |
-| JSON | папка `results/<RUN_ID>/` |
+```bash
+docker build -t browser-performance-runner:1.1.0 .
+docker run --rm \
+  --add-host=host.docker.internal:host-gateway \
+  -e TEST_STAND=http://host.docker.internal:1080/ \
+  -e PERFORMANCE_URLS_PROFILE=webtoursUrls \
+  -e INFLUX_ENABLED=true \
+  -e INFLUX_URL=http://host.docker.internal:8086 \
+  -e INFLUX_DATABASE=performance \
+  browser-performance-runner:1.1.0
+```
 
-На дашборде должны появиться Speed Index, FCP, LCP и т.д. по страницам WebTours.
+Локальный push в Nexus PoC: `npm run local:nexus`.
 
 ---
 
-## 3. Шаг за шагом: свой стенд и свои страницы
+## Конфигурация
 
-Цель: мерить не WebTours, а ваш test/stage.
+### Стенд и раннер — `.env`
 
-### Шаг 3.1 — указать стенд в `.env`
+Шаблон: [`.env.example`](./.env.example). Файл `.env` в git не коммитится.
 
-```powershell
-copy .env.example .env
-```
+| Переменная | Смысл |
+|------------|--------|
+| `TEST_STAND` | Базовый URL стенда **со `/` в конце** |
+| `PERFORMANCE_URLS_PROFILE` | Имя файла в `profiles/` без `.json` |
+| `RUN_TIME` | Длительность цикла, сек |
+| `PACING` | Пауза между аудитами, сек |
+| `PERF_REQUEST_TIMEOUT` | Таймаут страницы, сек |
+| `CACHE_MODE` | `cold` \| `warm` |
+| `CHROME_PATH` | Свой Chrome; пусто → Playwright Chromium |
+| `USER_TOKEN` / `ADMIN_TOKEN` | Секреты под логические токены |
+| `AUTH_STRATEGY` | `bearer-header` \| `local-storage` \| `session-storage` \| `cookie` |
+| `AUTH_STORAGE_KEY` / `AUTH_COOKIE_NAME` | Ключ storage / имя cookie |
+| `INFLUX_ENABLED` | `true` / `false` |
+| `INFLUX_URL` | URL **вашего** InfluxDB 1.x |
+| `INFLUX_DATABASE` | Имя БД (например `performance`) |
+| `INFLUX_MEASUREMENT` | По умолчанию `browser_performance` |
+| `RUN_ID` | Метка прогона; пусто → автогенерация |
+| `PROFILES_DIR` | Каталог JSON (после git-sync в K8s) |
 
-Откройте `.env` и задайте:
-
-```env
-TEST_STAND=https://test.example.local/
-PERFORMANCE_URLS_PROFILE=loadTestUrls
-RUN_TIME=300
-PACING=10
-PERF_REQUEST_TIMEOUT=60
-CACHE_MODE=cold
-```
-
-`TEST_STAND` — всегда **со слэшем в конце**. Хост в JSON-профилях не пишется.
-
-### Шаг 3.2 — описать страницы в JSON
-
-Файлы: каталог **`profiles/`**.  
-Имя файла без `.json` = значение `PERFORMANCE_URLS_PROFILE`.
-
-Пример `profiles/loadTestUrls.json`:
+### Страницы — `profiles/*.json`
 
 ```json
 [
   { "name": "Главная", "path": "./dashboard", "token": "userToken" },
-  { "name": "Карточка", "path": "./projects/1001", "token": "userToken" },
-  { "name": "Админка", "path": "./admin/users", "token": "adminToken" }
+  { "name": "Карточка", "path": "./projects/1001", "token": "userToken" }
 ]
 ```
 
-Правила:
-
 | Поле | Правило |
 |------|---------|
-| `name` | Уникальный id страницы (уйдёт в Influx как тег `page`) |
-| `path` | Относительный путь к `TEST_STAND` |
-| `token` | Логическое имя: `userToken` / `adminToken` / `anonymous` — **не** сам секрет |
+| `name` | Уникальный id → тег `page` в Influx |
+| `path` | Относительно `TEST_STAND` |
+| `token` | `userToken` / `adminToken` / `anonymous` (не сам секрет) |
 
-Готовые файлы в репо: `webtoursUrls`, `smokeUrls`, `loadTestUrls`, `criticalUrls`, `adminUrls`.
+Готовые профили: `webtoursUrls`, `smokeUrls`, `loadTestUrls`, `criticalUrls`, `adminUrls`.
 
-### Шаг 3.3 — токены и способ auth
+### Свой InfluxDB и своя Grafana
 
-В `.env`:
+1. Укажите `INFLUX_URL` / `INFLUX_DATABASE` в `.env` или параметрах Job.  
+2. В **вашей** Grafana: datasource → InfluxDB → тот же URL и БД.  
+3. Import: [`grafana/dashboards/browser-performance.json`](./grafana/dashboards/browser-performance.json).  
+4. При импорте выберите свой datasource (в демо uid был `bpr-influx`).
 
-```env
-USER_TOKEN=...ваш JWT или cookie-значение...
-ADMIN_TOKEN=...
-AUTH_STRATEGY=bearer-header
+Демо-compose Influx/Grafana нужны только для локальной проверки.
+
+### Настройки браузера
+
+| Где | Что |
+|-----|-----|
+| `.env` | `CHROME_PATH`, `CACHE_MODE`, auth |
+| `src/config/browserConfig.ts` | headless, viewport, launch args |
+| `src/lighthouse/lighthouseRunner.ts` | viewport аудита, throttling (`provided`) |
+
+---
+
+## Структура проекта
+
+```text
+browser-lighthouse-performance/
+├── profiles/                 # URL-профили для замера (*.json)
+├── demo/webtours/            # демо-стенд HP WebTours
+├── src/
+│   ├── auth/                 # подготовка токенов / auth
+│   ├── browser/              # Playwright lifecycle
+│   ├── config/               # env, browserConfig, tokens
+│   ├── lighthouse/           # audit + извлечение метрик
+│   ├── reporters/            # console, JSON, Influx
+│   ├── runner/               # preflight + цикл RUN_TIME
+│   ├── profiles/             # загрузчик JSON с диска
+│   ├── validation/
+│   ├── index.ts              # полный прогон
+│   └── check.ts              # только preflight
+├── grafana/                  # дашборд + provisioning (демо)
+├── jenkins/                  # Dockerfile Jenkins + JCasC
+├── k8s/                      # Job template, RBAC, kind, ConfigMap
+├── scripts/                  # bootstrap, setup-*, cleanup
+├── tests/                    # unit-тесты профилей/валидации
+├── Dockerfile                # multi-stage → node dist/
+├── docker-compose.yml        # Influx, Grafana, Gitea, Nexus, Jenkins
+├── Jenkinsfile               # CI: docker run
+├── Jenkinsfile.k8s           # CI: Kubernetes Job
+├── .gitlab-ci.yml            # заготовка GitLab CI
+├── .env.example
+└── package.json
 ```
 
-| `AUTH_STRATEGY` | Когда брать |
-|-----------------|-------------|
-| `bearer-header` | API/SPA ждёт `Authorization: Bearer …` |
-| `local-storage` | Токен лежит в `localStorage` |
-| `session-storage` | То же для `sessionStorage` |
-| `cookie` | Токен в cookie |
+---
 
-Ключи storage/cookie: `AUTH_STORAGE_KEY`, `AUTH_COOKIE_NAME` (см. `.env.example`).  
-Маппинг имён токенов → env: `src/config/tokens.ts`.
+## Примеры использования
 
-### Шаг 3.4 — проверить и запустить
+### 1. Preflight без полного цикла
 
-```powershell
+```bash
 npm run browser:performance:check
+```
+
+Проверяет: конфиг → профиль → токены → браузер → доступность страниц → ping Influx (если включён).
+
+### 2. Короткий прогон на WebTours
+
+```env
+TEST_STAND=http://127.0.0.1:1080/
+PERFORMANCE_URLS_PROFILE=webtoursUrls
+RUN_TIME=60
+PACING=5
+INFLUX_ENABLED=true
+INFLUX_URL=http://127.0.0.1:8086
+INFLUX_DATABASE=performance
+```
+
+```bash
 npm run browser:performance
 ```
 
-Если preflight красный — правьте URL / токены, пока не станет зелёным. Потом уже полный прогон.
+Результат: `results/<RUN_ID>/` + точки в Influx → Grafana.
 
-Параллельно с JMeter: просто стартуете оба на одном `TEST_STAND`. Отдельной «склейки» id не нужно.
-
----
-
-## 4. Шаг за шагом: свой InfluxDB и своя Grafana
-
-Демо Influx/Grafana из `docker compose` — только для локальной проверки. В компании используете **свои**.
-
-### Шаг 4.1 — куда писать метрики
-
-В `.env` (или в параметрах Jenkins / K8s Job):
+### 3. Свой стенд + auth
 
 ```env
+TEST_STAND=https://test.example.local/
+PERFORMANCE_URLS_PROFILE=loadTestUrls
+USER_TOKEN=eyJ...
+ADMIN_TOKEN=eyJ...
+AUTH_STRATEGY=bearer-header
 INFLUX_ENABLED=true
 INFLUX_URL=http://influx.company.local:8086
 INFLUX_DATABASE=performance
-INFLUX_USERNAME=
-INFLUX_PASSWORD=
-INFLUX_MEASUREMENT=browser_performance
+RUN_TIME=1800
+PACING=10
 ```
 
-1. Поднимите / возьмите существующий **InfluxDB 1.x** (HTTP line protocol).
-2. Создайте БД (например `performance`) или дайте права на create.
-3. Укажите `INFLUX_URL` так, чтобы до него достучался runner (с ноутбука, из Pod, из Jenkins — смотря откуда запускаете).
-4. Прогон: `npm run browser:performance:check` — должен пройти ping Influx.
+### 4. Параллельно с нагрузкой
 
-Без Influx: `INFLUX_ENABLED=false` — останутся console + JSON.
+1. Стартуете JMeter/k6 на стенд.  
+2. В том же окне теста — `npm run browser:performance` (или Jenkins/K8s Job).  
+3. Смотрите браузерные метрики в Grafana на том же Influx (или отдельном measurement).
 
-Что пишется:
+Отдельной «склейки» id с нагрузкой не требуется.
 
-- **теги:** `page`, `profile`, `stand`, `run_id`, `cacheMode`
-- **поля:** `speedIndex`, `fcp`, `lcp`, `ttfb`, `tbt`, `cls`, …
+### 5. Unit-тесты
 
-`run_id` — просто метка этого прогона раннера (автогенерация, если пусто).
-
-### Шаг 4.2 — как смотреть в своей Grafana
-
-1. Откройте **вашу** Grafana (не обязательно из этого репо).
-2. **Connections → Data sources → Add → InfluxDB**
-   - URL = тот же, что `INFLUX_URL` (с точки зрения Grafana)
-   - Database = `performance` (или как назвали)
-   - Version / query language — InfluxQL для 1.x
-3. Save & test — должен быть зелёный.
-4. **Dashboards → Import** → файл из репо:  
-   `grafana/dashboards/browser-performance.json`  
-   При импорте выберите ваш datasource (в демо uid был `bpr-influx` — просто подставьте свой).
-5. Откройте дашборд, фильтры: `run_id`, `page`, `profile`.
-
-Готово: runner пишет в ваш Influx → вы смотрите в своей Grafana.
+```bash
+npm test
+npm run typecheck
+```
 
 ---
 
-## 5. Шаг за шагом: выкат для DevOps (Nexus / K8s / Jenkins)
+## CI / DevOps
 
-Ниже два пути: **краткий боевой** и **полный локальный PoC** (как проверялось в этом репо).
+### Минимально в компании
 
-### 5A. Минимально в компании (без демо-compose)
+1. `docker build` из корневого `Dockerfile` → push в ваш Nexus/Harbor.  
+2. `profiles/*.json` в Git.  
+3. Запуск контейнера / K8s Job с env (`TEST_STAND`, профиль, `INFLUX_URL`, токены).  
+4. Grafana компании → datasource на Influx + импорт дашборда.
 
-| Шаг | Действие |
-|-----|----------|
-| 1 | Собрать образ из корневого `Dockerfile`, тег например `1.1.0` |
-| 2 | Запушить в **ваш** Nexus / Harbor / registry |
-| 3 | Положить `profiles/*.json` в Git (GitLab / GitHub) |
-| 4 | Запускать контейнер или Kubernetes Job с env: `TEST_STAND`, `PERFORMANCE_URLS_PROFILE`, `INFLUX_URL`, токены |
-| 5 | В корпоративной Grafana — datasource на Influx + импорт дашборда (шаг 4 выше) |
-
-Образ внутри: Node + Playwright Chromium + скомпилированный `dist/` + `profiles/`.  
-В Job профили можно обновлять через git-sync без пересборки образа (`scripts/k8s-entrypoint.sh`).
-
-### 5B. Полный локальный контур (как в PoC) — по шагам
-
-Нужны: Docker Desktop, место на диске **~8–12 GB** (Chromium-образ ~3.5 GB + Nexus + kind).
-
-#### Шаг 5.1 — демо-стек (стенд + метрики)
+### Локальный полный контур (PoC)
 
 ```powershell
-npm run local:up
-```
-
-Поднимает Influx, Grafana, WebTours.
-
-#### Шаг 5.2 — локальный Git (Gitea) под профили
-
-```powershell
-npm run local:git
-```
-
-- UI: http://localhost:3001 — `gitadmin` / `gitadmin`
-- Скрипт пушит в remote **`gitea`** (GitHub `origin` не трогает)
-
-У вас в проде вместо Gitea будет GitLab: поменяете URL в `k8s/configmap.yaml` и в Jenkins.
-
-#### Шаг 5.3 — Nexus и образ раннера
-
-```powershell
-npm run local:nexus
-```
-
-| | |
-|--|--|
-| UI Nexus | http://localhost:8081 — `admin` / `admin123` |
-| Docker registry | `127.0.0.1:8082` |
-| Образ | `127.0.0.1:8082/browser-performance-runner:1.1.0` |
-
-Если `docker push` ругается на HTTPS — Docker Desktop → Settings → Docker Engine:
-
-```json
-"insecure-registries": ["127.0.0.1:8082"]
-```
-
-Apply & Restart, снова `npm run local:nexus`.
-
-#### Шаг 5.4 — Jenkins
-
-```powershell
-npm run local:jenkins
-```
-
-- http://localhost:8080 — `admin` / `admin`
-- Jobs: `browser-performance` (docker run), после шага 5.5 — ещё `browser-performance-k8s`
-
-#### Шаг 5.5 — Kubernetes (kind)
-
-Предварительно: `winget install Kubernetes.kind` (или свой install kind).
-
-```powershell
-npm run local:k8s
-```
-
-Создаёт кластер `browser-perf`, namespace, RBAC, secrets, `jenkins/kubeconfig`.
-
-Потом пересоберите Jenkins (если ещё не с kubectl) — `local:jenkins` / `docker compose up -d --build jenkins`.
-
-#### Шаг 5.6 — запустить Job
-
-**Вариант A — из Jenkins:** job `browser-performance-k8s` → Build with Parameters.
-
-**Вариант B — руками:**
-
-```powershell
-.\scripts\run-k8s-job.ps1
-```
-
-Что происходит:
-
-```text
-1. kubectl apply Job
-2. Pod тянет image из Nexus
-3. git clone профилей
-4. Lighthouse loop
-5. запись в Influx (INFLUX_URL)
-6. Job/Pod удаляются
-```
-
-Важно: из Pod стенд и Influx на хосте — через **`host.docker.internal`**, не через `127.0.0.1`.  
-На Windows **не** делайте `kind load docker-image` для этого образа.
-
-#### Шаг 5.7 — уборка
-
-```powershell
+npm run local:up        # Influx + Grafana + WebTours
+npm run local:git       # Gitea + push (remote gitea)
+npm run local:nexus     # registry :8082 + image 1.1.0
+npm run local:jenkins   # http://localhost:8080
+npm run local:k8s       # kind + RBAC
+# Job: browser-performance-k8s  или  .\scripts\run-k8s-job.ps1
 npm run local:cleanup
-# или со снятием kind:
-.\scripts\cleanup-local.ps1 -StopKind
 ```
 
-### Какие файлы за что отвечают (CI)
+| Файл | Назначение |
+|------|------------|
+| `Jenkinsfile` | checkout + `docker run` |
+| `Jenkinsfile.k8s` | kubectl apply Job |
+| `jenkins/casc.yaml` | JCasC |
+| `k8s/job.template.yaml` | шаблон Job |
+| `k8s/configmap.yaml` | дефолтные env / Git URL |
+| `scripts/k8s-entrypoint.sh` | git-sync профилей → `node dist/…` |
+| `scripts/setup-nexus.ps1` | Nexus + build/push |
+| `scripts/setup-k8s.ps1` | kind + secrets |
 
-| Файл | Зачем |
-|------|--------|
-| `Dockerfile` | Сборка образа раннера |
-| `docker-compose.yml` | Локальные Influx, Grafana, Gitea, Nexus, Jenkins |
-| `Jenkinsfile` | Пайплайн: checkout + `docker run` |
-| `Jenkinsfile.k8s` | Пайплайн: Kubernetes Job |
-| `jenkins/Dockerfile` | Образ Jenkins (+ kubectl) |
-| `jenkins/casc.yaml` | JCasC: credentials, jobs |
-| `k8s/namespace.yaml` | Namespace |
-| `k8s/rbac.yaml` | Права для Job |
-| `k8s/configmap.yaml` | Дефолтные env / Git URL |
-| `k8s/job.template.yaml` | Шаблон one-shot Job |
-| `k8s/kind-config.yaml` | kind + HTTP к Nexus |
-| `scripts/k8s-entrypoint.sh` | Старт Pod: git-sync → `node dist/…` |
-| `scripts/setup-nexus.ps1` | Поднять Nexus, build/push образа |
-| `scripts/setup-k8s.ps1` | Поднять kind и обвязку |
-| `scripts/run-k8s-job.ps1` | Ручной прогон Job |
-| `grafana/dashboards/browser-performance.json` | Дашборд для импорта |
-| `.gitlab-ci.yml` | Заготовка под GitLab CI |
+Из Pod до стенда/Influx на хосте — `host.docker.internal`, не `127.0.0.1`.  
+На Windows не используйте `kind load docker-image` для этого образа.
+
+Диск: образ с Chromium ~3.5 GB + Nexus + kind — закладывайте **8–12 GB**.
 
 ---
 
-## 6. Справочник: переменные, метрики, файлы, версии
+## Метрики
 
-### Основные переменные `.env`
-
-| Переменная | Смысл |
-|------------|--------|
-| `TEST_STAND` | Базовый URL стенда (`…/` в конце) |
-| `PERFORMANCE_URLS_PROFILE` | Имя файла в `profiles/` без `.json` |
-| `RUN_TIME` | Длительность цикла, сек |
-| `PACING` | Пауза между аудитами, сек |
-| `PERF_REQUEST_TIMEOUT` | Таймаут одной страницы, сек |
-| `CACHE_MODE` | `cold` \| `warm` |
-| `USER_TOKEN` / `ADMIN_TOKEN` | Секреты |
-| `AUTH_STRATEGY` | Как класть токен |
-| `INFLUX_ENABLED` | `true` / `false` |
-| `INFLUX_URL` | Куда писать |
-| `INFLUX_DATABASE` | Имя БД |
-| `INFLUX_MEASUREMENT` | По умолчанию `browser_performance` |
-| `RUN_ID` | Метка прогона; пусто → авто |
-| `PROFILES_DIR` | Каталог JSON (K8s после git-sync) |
-| `CHROME_PATH` | Свой Chrome; пусто → Playwright |
-
-Полный шаблон: `.env.example`.
-
-### Метрики
-
-| Метрика | Audit Lighthouse | Ед. |
+| Метрика | Lighthouse audit | Ед. |
 |---------|------------------|-----|
 | Speed Index | `speed-index` | ms |
 | FCP | `first-contentful-paint` | ms |
@@ -466,65 +412,71 @@ npm run local:cleanup
 | CLS | `cumulative-layout-shift` | — |
 | TTFB | `server-response-time` | ms |
 
-### Команды
+**Influx tags:** `page`, `profile`, `stand`, `run_id`, `cacheMode`  
+**Fields:** `speedIndex`, `fcp`, `lcp`, `ttfb`, `tbt`, `cls`, …  
+Полный URL — field, не tag.
 
-```powershell
-npm run bootstrap                   # демо с нуля
-npm run browser:performance:check   # только preflight
+---
+
+## FAQ
+
+**Это генератор нагрузки?**  
+Нет. Это probe: один Lighthouse-аудит за раз. Нагрузку даёт JMeter/k6/Gatling.
+
+**Обязателен ли Influx из docker-compose?**  
+Нет. Укажите свой `INFLUX_URL`. Grafana тоже может быть корпоративной — нужен только datasource на этот Influx.
+
+**Где править список URL?**  
+`profiles/*.json`. Имя файла = `PERFORMANCE_URLS_PROFILE`.
+
+**Где настройки браузера (разрешение, headless)?**  
+В коде: `src/config/browserConfig.ts`. Через env сейчас: `CHROME_PATH`, `CACHE_MODE`.
+
+**Почему preflight падает с 401/403?**  
+Неверный `AUTH_STRATEGY` / токены / `TEST_STAND`. Значения токенов в логи не пишутся — только логическое имя (`userToken`).
+
+**Почему в Grafana пусто?**  
+`INFLUX_ENABLED=true`, runner достучался до Influx, datasource в Grafana смотрит на **тот же** URL и БД, после прогона был хотя бы один успешный write.
+
+**Зачем Nexus, если есть Docker Hub?**  
+В PoC Nexus имитирует корпоративный registry. В проде — любой ваш registry; поменяйте image pull URL.
+
+**Yarn?**  
+_(не указано)_ — используйте `npm ci`.
+
+**Лицензия?**  
+_(не указано)_ в репозитории. Демо WebTours — классический учебный sample HP/Mercury.
+
+**Почему на GitHub у папки «updated 2 weeks ago»?**  
+Это дата последнего коммита, который трогал путь. Содержимое может быть актуальным (образ `1.1.0`, профили JSON).
+
+---
+
+## Roadmap / вне скоупа
+
+Сейчас **нет** (отдельные задачи поверх probe):
+
+- пороги / quality gates по метрикам  
+- mobile emulation / network throttling profiles  
+- параллельные Lighthouse в одном процессе  
+- общий end-to-end пайплайн «JMeter + browser» с одной кнопкой  
+
+---
+
+## Команды (шпаргалка)
+
+```bash
+npm run bootstrap                   # демо с нуля (Windows → scripts/bootstrap.ps1)
+npm run browser:performance:check   # preflight
 npm run browser:performance         # полный цикл
 npm run build                       # dist/ для Docker
-npm run local:up / local:git / local:nexus / local:jenkins / local:k8s
+npm test
+npm run local:up | local:git | local:nexus | local:jenkins | local:k8s
 npm run local:cleanup
 ```
 
-### Версии (на чём собрано)
-
-| Что | Версия |
-|-----|--------|
-| Пакет / image tag | `1.1.0` |
-| Node | ≥ 20 |
-| Docker base | `mcr.microsoft.com/playwright:v1.62.1-jammy` |
-| Lighthouse | ^12.4 |
-| InfluxDB | `influxdb:1.8` |
-| Grafana (демо) | `9.5.18` |
-| Gitea | `1.22.3` |
-| Nexus | `3.70.1` |
-| K8s (PoC) | kind `browser-perf` |
-| Демо-стенд | WebTours, порт `1080` |
-
-Имя образа в registry: `browser-performance-runner:1.1.0`.
-
-### Дерево репо (коротко)
-
-```text
-profiles/          ← страницы для замера
-demo/webtours/     ← демо-стенд
-src/               ← код runner’а
-grafana/           ← дашборд + provisioning демо
-jenkins/           ← Dockerfile + casc
-k8s/               ← Job, RBAC, kind
-scripts/           ← bootstrap и setup-*
-Dockerfile
-Jenkinsfile
-Jenkinsfile.k8s
-.env.example
-```
-
 ---
 
-## 7. Если что-то не работает
-
-| Симптом | Что сделать |
-|---------|-------------|
-| Preflight 401/403/404 | Проверить `TEST_STAND`, paths в JSON, токены, `AUTH_STRATEGY` |
-| Grafana пустая | `INFLUX_ENABLED=true`, тот же `INFLUX_URL`/БД, datasource в Grafana смотрит **туда же** |
-| WebTours не открывается | `docker compose -f demo/webtours/docker-compose.yaml ps` и `logs` |
-| Pod не видит стенд/Influx | В env Job — `host.docker.internal`, не `127.0.0.1` |
-| Не пушится в локальный Nexus | `insecure-registries: ["127.0.0.1:8082"]` в Docker Engine |
-| Мало места на диске | `npm run local:cleanup`, не грузить образ через `kind load` |
-
----
-
-## Вне скоупа
-
-Пороги/гейты по метрикам, mobile/throttling, несколько Lighthouse параллельно в одном процессе — отдельные задачи поверх этого probe.
+<p align="center">
+  <sub>Performance probe · Playwright · Lighthouse · InfluxDB 1.8 · optional Jenkins / Nexus / Kubernetes</sub>
+</p>
